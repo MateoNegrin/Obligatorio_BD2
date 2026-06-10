@@ -1,0 +1,50 @@
+@page "/eventos"
+@using Ticketing.Contracts.Eventos
+@using Ticketing.Front.ApiClients
+@inject EventosApiClient Client
+
+<PageTitle>Eventos</PageTitle>
+
+<h1>Eventos deportivos</h1>
+
+@if (_error is not null)
+{
+    <p style="color:red">@_error</p>
+}
+else if (_eventos is null)
+{
+    <p>Cargando...</p>
+}
+else if (_eventos.Count == 0)
+{
+    <p>No hay eventos.</p>
+}
+else
+{
+    <table class="table">
+        <thead><tr><th>Id</th><th>Local</th><th>Visitante</th><th>Fecha</th><th>Hora</th></tr></thead>
+        <tbody>
+        @foreach (var e in _eventos)
+        {
+            <tr><td>@e.Id</td><td>@e.IdEquipoLocal</td><td>@e.IdEquipoVisitante</td><td>@e.Fecha</td><td>@e.Hora</td></tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<EventoResponse>? _eventos;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _eventos = await Client.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error llamando a la API: {ex.Message}";
+        }
+    }
+}

@@ -1,0 +1,51 @@
+@page "/equipos"
+@using Ticketing.Contracts.Equipos
+@using Ticketing.Front.ApiClients
+@inject EquiposApiClient Client
+
+<PageTitle>Equipos</PageTitle>
+
+<h1>Equipos</h1>
+
+@if (_error is not null)
+{
+    <p style="color:red">@_error</p>
+}
+else if (_equipos is null)
+{
+    <p>Cargando...</p>
+}
+else if (_equipos.Count == 0)
+{
+    <p>No hay equipos.</p>
+}
+else
+{
+    <table class="table">
+        <thead><tr><th>Id</th><th>Nombre</th></tr></thead>
+        <tbody>
+        @foreach (var e in _equipos)
+        {
+            <tr><td>@e.Id</td><td>@e.Nombre</td></tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<EquipoResponse>? _equipos;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _equipos = await Client.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            // Esperado mientras el backend no esté implementado (NotImplementedException => 500).
+            _error = $"Error llamando a la API: {ex.Message}";
+        }
+    }
+}

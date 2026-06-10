@@ -1,0 +1,47 @@
+@page "/metricas"
+@using Ticketing.Contracts.Metricas
+@using Ticketing.Front.ApiClients
+@inject MetricasApiClient Client
+
+<PageTitle>Métricas</PageTitle>
+
+<h1>Métricas</h1>
+
+@if (_error is not null)
+{
+    <p style="color:red">@_error</p>
+}
+else if (_eventos is null)
+{
+    <p>Cargando...</p>
+}
+else
+{
+    <h2>Eventos más vendidos</h2>
+    <table class="table">
+        <thead><tr><th>Evento</th><th>Entradas vendidas</th></tr></thead>
+        <tbody>
+        @foreach (var e in _eventos)
+        {
+            <tr><td>@e.IdEventoDeportivo</td><td>@e.EntradasVendidas</td></tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<EventoMasVendidoResponse>? _eventos;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _eventos = await Client.GetEventosMasVendidosAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error llamando a la API: {ex.Message}";
+        }
+    }
+}

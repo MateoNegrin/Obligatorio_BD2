@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: ticketing-postgres
+    environment:
+      POSTGRES_DB: ticketing
+      POSTGRES_USER: ticketing
+      POSTGRES_PASSWORD: ticketing
+    ports:
+      - "5432:5432"
+    volumes:
+      - ticketing-data:/var/lib/postgresql/data
+      # Los .sql de ./database se ejecutan en orden la PRIMERA vez que se crea el
+      # volumen (si el volumen ya existe, no se vuelven a correr).
+      - ./database:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  ticketing-data:

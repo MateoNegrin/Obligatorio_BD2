@@ -1,0 +1,50 @@
+@page "/usuarios"
+@using Ticketing.Contracts.Usuarios
+@using Ticketing.Front.ApiClients
+@inject UsuariosApiClient Client
+
+<PageTitle>Usuarios</PageTitle>
+
+<h1>Usuarios</h1>
+
+@if (_error is not null)
+{
+    <p style="color:red">@_error</p>
+}
+else if (_usuarios is null)
+{
+    <p>Cargando...</p>
+}
+else if (_usuarios.Count == 0)
+{
+    <p>No hay usuarios.</p>
+}
+else
+{
+    <table class="table">
+        <thead><tr><th>Documento</th><th>Mail</th><th>País</th><th>Localidad</th></tr></thead>
+        <tbody>
+        @foreach (var u in _usuarios)
+        {
+            <tr><td>@u.NumeroDocumento</td><td>@u.Mail</td><td>@u.Pais</td><td>@u.Localidad</td></tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<UsuarioResponse>? _usuarios;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _usuarios = await Client.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error llamando a la API: {ex.Message}";
+        }
+    }
+}

@@ -1,0 +1,50 @@
+@page "/estadios"
+@using Ticketing.Contracts.Estadios
+@using Ticketing.Front.ApiClients
+@inject EstadiosApiClient Client
+
+<PageTitle>Estadios</PageTitle>
+
+<h1>Estadios</h1>
+
+@if (_error is not null)
+{
+    <p style="color:red">@_error</p>
+}
+else if (_estadios is null)
+{
+    <p>Cargando...</p>
+}
+else if (_estadios.Count == 0)
+{
+    <p>No hay estadios.</p>
+}
+else
+{
+    <table class="table">
+        <thead><tr><th>Id</th><th>Sede</th><th>Capacidad</th><th>Ubicación</th></tr></thead>
+        <tbody>
+        @foreach (var e in _estadios)
+        {
+            <tr><td>@e.Id</td><td>@e.NombreSede</td><td>@e.CapacidadMaxima</td><td>@e.Ubicacion</td></tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<EstadioResponse>? _estadios;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _estadios = await Client.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error llamando a la API: {ex.Message}";
+        }
+    }
+}

@@ -1,0 +1,14 @@
+using System.Net.Http.Json;
+using Ticketing.Contracts.Usuarios;
+
+namespace Ticketing.Front.ApiClients;
+
+public sealed class UsuariosApiClient
+{
+    private readonly HttpClient _http;
+
+    public UsuariosApiClient(HttpClient http) => _http = http;
+
+    public async Task<IReadOnlyList<UsuarioResponse>> GetAllAsync(CancellationToken ct = default)
+        => await _http.GetFromJsonAsync<IReadOnlyList<UsuarioResponse>>("api/Usuarios", ct) ?? [];
+}
