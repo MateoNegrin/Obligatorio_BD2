@@ -14,8 +14,8 @@ public sealed class EquipoRepository : IEquipoRepository
     public Task<IReadOnlyList<Equipo>> GetAllAsync(CancellationToken ct = default)
         // Patrón ADO.NET esperado a completar luego:
         // await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
-        // await using var cmd = new NpgsqlCommand(
-        //     "SELECT id, nombre FROM equipo", conn);
+        // await using var cmd = new MySqlCommand(
+        //     "SELECT id, nombre FROM equipo", (MySqlConnection)conn);
         // await using var reader = await cmd.ExecuteReaderAsync(ct);
         // var result = new List<Equipo>();
         // while (await reader.ReadAsync(ct))
@@ -30,8 +30,8 @@ public sealed class EquipoRepository : IEquipoRepository
     public Task<Equipo?> GetByIdAsync(int id, CancellationToken ct = default)
         // Patrón con parámetro (anti SQL injection):
         // await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
-        // await using var cmd = new NpgsqlCommand(
-        //     "SELECT id, nombre FROM equipo WHERE id = @id", conn);
+        // await using var cmd = new MySqlCommand(
+        //     "SELECT id, nombre FROM equipo WHERE id = @id", (MySqlConnection)conn);
         // cmd.Parameters.AddWithValue("id", id);
         // await using var reader = await cmd.ExecuteReaderAsync(ct);
         // if (!await reader.ReadAsync(ct)) return null;

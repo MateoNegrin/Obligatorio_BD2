@@ -17,7 +17,7 @@ public sealed class VentaRepository : IVentaRepository
     public Task<Venta?> GetByIdAsync(int id, CancellationToken ct = default)
         => throw new NotImplementedException();
 
-    // La venta + sus entradas deben crearse dentro de una transacción (NpgsqlTransaction).
+    // La venta + sus entradas deben crearse dentro de una transacción (MySqlTransaction).
     public Task<int> CreateAsync(Venta venta, IReadOnlyList<Entrada> entradas, CancellationToken ct = default)
         => throw new NotImplementedException();
 }
