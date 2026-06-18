@@ -1,3 +1,4 @@
+using MySql.Data.MySqlClient;
 using Ticketing.Application.Abstractions;
 using Ticketing.Domain;
 using Ticketing.Infrastructure.Persistence;
@@ -11,12 +12,49 @@ public sealed class TransferenciaRepository : ITransferenciaRepository
     public TransferenciaRepository(IDbConnectionFactory connectionFactory)
         => _connectionFactory = connectionFactory;
 
-    public Task<IReadOnlyList<Transferencia>> GetHistorialAsync(int idEntrada, CancellationToken ct = default)
-        => throw new NotImplementedException();
+    public async Task<IReadOnlyList<Transferencia>> GetHistorialAsync(int idEntrada, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(
+            "SELECT numero_documento_emisor, numero_documento_receptor, id_entrada, fecha FROM transferencia WHERE id_entrada = @id_entrada ORDER BY fecha DESC",
+            (MySqlConnection)conn);
+        cmd.Parameters.AddWithValue("@id_entrada", idEntrada);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
 
-    public Task<int> ContarTransferenciasAsync(int idEntrada, CancellationToken ct = default)
-        => throw new NotImplementedException();
+        var result = new List<Transferencia>();
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(new Transferencia
+            {
+                NumeroDocumentoEmisor = reader.GetString(0),
+                NumeroDocumentoReceptor = reader.GetString(1),
+                IdEntrada = reader.GetInt32(2),
+                Fecha = reader.GetDateTime(3)
+            });
+        }
+        return result;
+    }
 
-    public Task CreateAsync(Transferencia transferencia, CancellationToken ct = default)
-        => throw new NotImplementedException();
+    public async Task<int> ContarTransferenciasAsync(int idEntrada, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(
+            "SELECT COUNT(*) FROM transferencia WHERE id_entrada = @id_entrada",
+            (MySqlConnection)conn);
+        cmd.Parameters.AddWithValue("@id_entrada", idEntrada);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return Convert.ToInt32(result);
+    }
+
+    public async Task CreateAsync(Transferencia transferencia, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(
+            "INSERT INTO transferencia (numero_documento_emisor, numero_documento_receptor, id_entrada, fecha) VALUES (@numero_documento_emisor, @numero_documento_receptor, @id_entrada, NOW())",
+            (MySqlConnection)conn);
+        cmd.Parameters.AddWithValue("@numero_documento_emisor", transferencia.NumeroDocumentoEmisor);
+        cmd.Parameters.AddWithValue("@numero_documento_receptor", transferencia.NumeroDocumentoReceptor);
+        cmd.Parameters.AddWithValue("@id_entrada", transferencia.IdEntrada);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
 }

@@ -21,8 +21,8 @@ Front (Blazor)  ->  Api (Controller)  ->  Application (Service)  ->  Infrastruct
 - El **Repository** habla con la base por **ADO.NET/MySql.Data** y devuelve **entidades de dominio**.
 - Los **DTOs** (Contracts) son lo que entra y sale por HTTP; el **Domain** es interno.
 
-> **Status actual:** Funcionalidades de **Equipos**, **Estadios** y **Eventos** están completamente implementadas
-> con CRUD completo. Las demás entidades aún lanzan `NotImplementedException`.
+> **Status actual:** Funcionalidades de **Equipos**, **Estadios**, **Eventos**, **Usuarios**, **Entradas** y **Transferencias** están completamente implementadas
+> con CRUD completo (excepto Ventas y Métricas, excluidas del alcance). Resto de entidades lanzan `NotImplementedException`.
 
 ---
 
@@ -170,6 +170,18 @@ RBAC dinámico). Coordinar con el equipo antes de tocar el esquema.
 Áreas que hoy **no** tienen tabla en el esquema (Auth, Roles, Permisos, Asignaciones,
 LogsUsuario, Paises, Localidades, Validacion, Qr): el controller y el service existen para
 que aparezcan en Swagger, pero quedan en `NotImplementedException` con su `// TODO`.
+
+### Entidades ya implementadas:
+- ✅ **Equipo** — CRUD completo
+- ✅ **Estadio** (con Sector) — CRUD completo
+- ✅ **EventoDeportivo** — CRUD completo
+- ✅ **Usuario** — CRUD completo
+- ✅ **Entrada** — Lectura y marcación de consumo
+- ✅ **Transferencia** — Crear, contar e historial (máx. 3 transferencias)
+
+### Entidades excluidas del alcance:
+- ❌ **Ventas** — Excluida
+- ❌ **Métricas** — Excluida
 
 ---
 

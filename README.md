@@ -6,7 +6,7 @@ con acceso a datos en **ADO.NET puro sobre MySQL** (sin ORM) y un front mínimo 
 
 **Base de datos remota:** `mysql.reto-ucu.net:50006` (IC_Grupo3)
 
-> Status: Funcionalidades implementadas para **Equipos, Estadios y Eventos**. Endpoints disponibles
+> Status: Funcionalidades completamente implementadas para **Equipos, Estadios, Eventos, Usuarios, Entradas y Transferencias** (CRUD completo). Endpoints disponibles
 > en Swagger. La arquitectura sigue el patrón de 5 capas (Domain → Contracts → Application → Infrastructure → MySQL).
 >
 > Para entender cómo está organizado el código y cómo trabajar sobre él, ver **[GUIA.md](GUIA.md)**.
@@ -54,6 +54,16 @@ dotnet run --project src/Ticketing.Api
 - ✅ `POST /api/Estadios` — Crear estadio
 - ✅ `GET /api/Eventos` — Listar eventos deportivos
 - ✅ `POST /api/Eventos` — Crear evento
+- ✅ `GET /api/Usuarios` — Listar usuarios
+- ✅ `GET /api/Usuarios/{numeroDocumento}` — Obtener usuario
+- ✅ `POST /api/Usuarios` — Crear usuario
+- ✅ `PUT /api/Usuarios/{numeroDocumento}` — Actualizar usuario
+- ✅ `DELETE /api/Usuarios/{numeroDocumento}` — Eliminar usuario
+- ✅ `GET /api/Entradas` — Listar entradas del usuario
+- ✅ `GET /api/Entradas/{id}` — Obtener entrada
+- ✅ `POST /api/Transferencias` — Transferir entrada
+- ✅ `POST /api/Transferencias/aceptar` — Aceptar transferencia
+- ✅ `GET /api/Transferencias/entrada/{idEntrada}/historial` — Historial de transferencias
 
 ## 4. Correr el front
 
