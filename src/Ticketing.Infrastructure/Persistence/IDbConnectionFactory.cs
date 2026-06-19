@@ -1,8 +1,8 @@
-using Npgsql;
+using System.Data.Common;
 
 namespace Ticketing.Infrastructure.Persistence;
 
 public interface IDbConnectionFactory
 {
-    Task<NpgsqlConnection> CreateOpenConnectionAsync(CancellationToken ct = default);
+    Task<DbConnection> CreateOpenConnectionAsync(CancellationToken ct = default);
 }

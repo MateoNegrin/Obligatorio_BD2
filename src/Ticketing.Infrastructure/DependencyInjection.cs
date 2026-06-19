@@ -9,7 +9,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
-        services.AddSingleton<IDbConnectionFactory, NpgsqlConnectionFactory>();
+        services.AddSingleton<IDbConnectionFactory, MySqlConnectionFactory>();
 
         services.AddScoped<IEquipoRepository, EquipoRepository>();
         services.AddScoped<IEstadioRepository, EstadioRepository>();

@@ -1,51 +1,79 @@
 # Ticketing — Mundial 2026 (BDII)
 
-Sistema de venta de entradas para el Mundial 2026. Esqueleto de backend en .NET (capas)
-con acceso a datos en **ADO.NET puro sobre PostgreSQL** (sin ORM) y un front mínimo en
+Sistema de venta de entradas para el Mundial 2026. Backend en .NET con arquitectura de capas
+con acceso a datos en **ADO.NET puro sobre MySQL** (sin ORM) y un front mínimo en
 **Blazor WebAssembly**.
 
-> Esta etapa es **esqueleto**: los endpoints están declarados y visibles en Swagger, pero
-> los métodos de services y repositorios lanzan `NotImplementedException`. Se implementan
-> de a uno. La única pieza realmente implementada es la conexión a la base.
+**Base de datos remota:** `mysql.reto-ucu.net:50006` (IC_Grupo3)
+
+> Status: Funcionalidades completamente implementadas para **Equipos, Estadios, Eventos, Usuarios, Entradas y Transferencias** (CRUD completo). Endpoints disponibles
+> en Swagger. La arquitectura sigue el patrón de 5 capas (Domain → Contracts → Application → Infrastructure → MySQL).
 >
 > Para entender cómo está organizado el código y cómo trabajar sobre él, ver **[GUIA.md](GUIA.md)**.
 
 ## Requisitos
 
 - [.NET SDK 10](https://dotnet.microsoft.com/download) (LTS).
-- [Docker](https://www.docker.com/) (para levantar PostgreSQL en local).
+- Acceso a red remota (para conectar a `mysql.reto-ucu.net:50006`).
 
-## 1. Levantar la base de datos
+## 1. Verificar conexión a la base de datos
 
-```bash
-docker compose up -d
+La base de datos remota está preconfigurada en `src/Ticketing.Api/appsettings.json`:
+
+```json
+"ConnectionStrings": {
+  "MySQL": "Server=mysql.reto-ucu.net;Port=50006;Database=IC_Grupo3;Uid=ic_g3_admin;Pwd=BD2ObligatorioG32026;"
+}
 ```
 
-Levanta PostgreSQL en `localhost:5432` con base/usuario/clave `ticketing` (coinciden con
-`src/Ticketing.Api/appsettings.json`). Los scripts de `database/` (`01_schema.sql`,
-`02_seed.sql`) se ejecutan automáticamente **la primera vez** que se crea el volumen.
+La inicialización del schema (tablas) se realiza automáticamente a través del endpoint:
+```bash
+POST http://localhost:5284/api/Admin/initialize-schema
+```
 
-> Si cambiás los `.sql` y querés re-ejecutarlos, borrá el volumen:
-> `docker compose down -v && docker compose up -d`.
+## 2. Compilar el proyecto
 
-## 2. Correr la API
+```bash
+dotnet build Ticketing.sln
+```
+
+## 3. Correr la API
 
 ```bash
 dotnet run --project src/Ticketing.Api
 ```
 
 - Swagger UI: **http://localhost:5284/swagger**
-- La API levanta aunque la base no esté: solo falla al ejecutar un endpoint que toque la DB.
+- Health check: `GET http://localhost:5284/health`
+- Admin endpoint: `POST http://localhost:5284/api/Admin/initialize-schema` (crear tablas)
 
-## 3. Correr el front
+### Endpoints implementados:
+- ✅ `GET /api/Equipos` — Listar equipos
+- ✅ `POST /api/Equipos` — Crear equipo
+- ✅ `GET /api/Estadios` — Listar estadios
+- ✅ `POST /api/Estadios` — Crear estadio
+- ✅ `GET /api/Eventos` — Listar eventos deportivos
+- ✅ `POST /api/Eventos` — Crear evento
+- ✅ `GET /api/Usuarios` — Listar usuarios
+- ✅ `GET /api/Usuarios/{numeroDocumento}` — Obtener usuario
+- ✅ `POST /api/Usuarios` — Crear usuario
+- ✅ `PUT /api/Usuarios/{numeroDocumento}` — Actualizar usuario
+- ✅ `DELETE /api/Usuarios/{numeroDocumento}` — Eliminar usuario
+- ✅ `GET /api/Entradas` — Listar entradas del usuario
+- ✅ `GET /api/Entradas/{id}` — Obtener entrada
+- ✅ `POST /api/Transferencias` — Transferir entrada
+- ✅ `POST /api/Transferencias/aceptar` — Aceptar transferencia
+- ✅ `GET /api/Transferencias/entrada/{idEntrada}/historial` — Historial de transferencias
+
+## 4. Correr el front
 
 ```bash
 dotnet run --project src/Ticketing.Front
 ```
 
 Abre el Blazor WASM (la URL aparece en consola). Apunta a la API según `ApiBaseUrl` en
-`src/Ticketing.Front/wwwroot/appsettings.json`. En esta etapa las páginas mostrarán un
-error al listar (porque el backend devuelve 500 por `NotImplementedException`).
+`src/Ticketing.Front/wwwroot/appsettings.json`. Las páginas para Equipos, Estadios y Eventos
+funcionan correctamente y se sincronizan con la API.
 
 ## Estructura
 
@@ -54,15 +82,18 @@ src/
   Ticketing.Domain          Entidades de dominio (POCOs)
   Ticketing.Contracts       DTOs (compartidos API <-> Front)
   Ticketing.Application      Interfaces y services (orquestación)
-  Ticketing.Infrastructure   Repositorios ADO.NET/Npgsql + conexión
-  Ticketing.Api              Web API + Swagger
+  Ticketing.Infrastructure   Repositorios ADO.NET/MySql.Data + conexión MySQL
+  Ticketing.Api              Web API + Swagger + Admin endpoints
   Ticketing.Front            Blazor WebAssembly
-database/                    Scripts SQL (schema + seed)
-docker-compose.yml           PostgreSQL para desarrollo
+database/
+  01_schema_mysql.sql        DDL para MySQL (20 tablas)
+  02_seed.sql                Datos semilla (opcional)
 ```
 
-## Compilar todo
+## Tecnologías
 
-```bash
-dotnet build Ticketing.sln
-```
+- **Backend:** .NET 10 (LTS), ASP.NET Core 10
+- **Base de datos:** MySQL 8.0+ (remota en mysql.reto-ucu.net)
+- **Driver:** MySql.Data v9.0.0 (ADO.NET puro, sin ORM)
+- **Frontend:** Blazor WebAssembly
+- **API:** OpenAPI/Swagger
