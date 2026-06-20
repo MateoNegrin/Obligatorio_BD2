@@ -1,0 +1,247 @@
+@page "/signup"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Ticketing.Front.Services
+@inject FirebaseAuthenticationService AuthService
+@inject NavigationManager NavManager
+@inject ILogger<Signup> Logger
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-body p-5">
+                    <h1 class="card-title text-center mb-4">Crear Cuenta</h1>
+
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            @ErrorMessage
+                            <button type="button" class="btn-close" @onclick="@(() => ErrorMessage = null)"></button>
+                        </div>
+                    }
+
+                    <form @onsubmit="HandleSignup">
+                        <!-- Fila 1: Número Documento y Email -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="numeroDocumento" class="form-label">Número de Documento *</label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="numeroDocumento"
+                                    @bind="NumeroDocumento"
+                                    placeholder="Ej: 12345678"
+                                    required
+                                    disabled="@IsLoading" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Correo Electrónico *</label>
+                                <input
+                                    type="email"
+                                    class="form-control"
+                                    id="email"
+                                    @bind="Email"
+                                    placeholder="tu@email.com"
+                                    required
+                                    disabled="@IsLoading" />
+                            </div>
+                        </div>
+
+                        <!-- Fila 2: País y Localidad -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="pais" class="form-label">País</label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="pais"
+                                    @bind="Pais"
+                                    placeholder="Ej: Uruguay"
+                                    disabled="@IsLoading" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="localidad" class="form-label">Localidad</label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="localidad"
+                                    @bind="Localidad"
+                                    placeholder="Ej: Montevideo"
+                                    disabled="@IsLoading" />
+                            </div>
+                        </div>
+
+                        <!-- Fila 3: Calle y Número Dirección -->
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="calle" class="form-label">Calle</label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="calle"
+                                    @bind="Calle"
+                                    placeholder="Ej: 18 de Julio"
+                                    disabled="@IsLoading" />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="numeroDireccion" class="form-label">Número</label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="numeroDireccion"
+                                    @bind="NumeroDireccion"
+                                    placeholder="Ej: 1234"
+                                    disabled="@IsLoading" />
+                            </div>
+                        </div>
+
+                        <!-- Fila 4: Código Postal -->
+                        <div class="mb-3">
+                            <label for="codigoPostal" class="form-label">Código Postal</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="codigoPostal"
+                                @bind="CodigoPostal"
+                                placeholder="Ej: 11000"
+                                disabled="@IsLoading" />
+                        </div>
+
+                        <!-- Fila 5: Contraseña -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Contraseña *</label>
+                                <input
+                                    type="password"
+                                    class="form-control"
+                                    id="password"
+                                    @bind="Password"
+                                    placeholder="Mínimo 6 caracteres"
+                                    required
+                                    disabled="@IsLoading" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="confirmPassword" class="form-label">Confirmar Contraseña *</label>
+                                <input
+                                    type="password"
+                                    class="form-control"
+                                    id="confirmPassword"
+                                    @bind="ConfirmPassword"
+                                    placeholder="Confirma tu contraseña"
+                                    required
+                                    disabled="@IsLoading" />
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary w-100"
+                            disabled="@IsLoading">
+                            @if (IsLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Creando cuenta</span>
+                            }
+                            else
+                            {
+                                <span>Crear Cuenta</span>
+                            }
+                        </button>
+                    </form>
+
+                    <hr class="my-4" />
+
+                    <p class="text-center text-muted mb-0">
+                        ¿Ya tienes cuenta?
+                        <a href="/login" class="text-decoration-none">Inicia sesión aquí</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string NumeroDocumento = string.Empty;
+    private string Email = string.Empty;
+    private string Pais = string.Empty;
+    private string Localidad = string.Empty;
+    private string Calle = string.Empty;
+    private string NumeroDireccion = string.Empty;
+    private string CodigoPostal = string.Empty;
+    private string Password = string.Empty;
+    private string ConfirmPassword = string.Empty;
+    private string? ErrorMessage;
+    private bool IsLoading;
+
+    private async Task HandleSignup()
+    {
+        // Validar campos requeridos
+        if (string.IsNullOrWhiteSpace(NumeroDocumento) || 
+            string.IsNullOrWhiteSpace(Email) || 
+            string.IsNullOrWhiteSpace(Password))
+        {
+            ErrorMessage = "Por favor completa los campos requeridos (marcados con *)";
+            return;
+        }
+
+        if (Password != ConfirmPassword)
+        {
+            ErrorMessage = "Las contraseñas no coinciden";
+            return;
+        }
+
+        if (Password.Length < 6)
+        {
+            ErrorMessage = "La contraseña debe tener mínimo 6 caracteres";
+            return;
+        }
+
+        IsLoading = true;
+        ErrorMessage = null;
+
+        try
+        {
+            var request = new SignUpCompleteRequest(
+                NumeroDocumento.Trim(),
+                Email.Trim(),
+                Password,
+                Pais?.Trim() ?? string.Empty,
+                Localidad?.Trim() ?? string.Empty,
+                Calle?.Trim() ?? string.Empty,
+                NumeroDireccion?.Trim() ?? string.Empty,
+                CodigoPostal?.Trim() ?? string.Empty);
+
+            var (success, error) = await AuthService.SignUpCompleteAsync(request);
+
+            if (success)
+            {
+                Logger.LogInformation("Registro exitoso para: {Email}", Email);
+                
+                // Notificar al AuthenticationStateProvider
+                var state = AuthService.GetCurrentState();
+                if (state.IsAuthenticated && !string.IsNullOrEmpty(state.UserId))
+                {
+                    var authProvider = AuthStateProvider as Ticketing.Front.Authentication.FirebaseAuthenticationStateProvider;
+                    authProvider?.NotifyUserAuthenticated(state.UserId, state.Email ?? Email);
+                }
+                
+                NavManager.NavigateTo("/");
+            }
+            else
+            {
+                ErrorMessage = error ?? "Error al registrarse";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Excepción durante signup");
+            ErrorMessage = "Error inesperado al registrarse";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

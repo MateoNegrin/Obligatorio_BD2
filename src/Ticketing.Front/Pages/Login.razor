@@ -1,0 +1,127 @@
+@page "/login"
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject FirebaseAuthenticationService AuthService
+@inject NavigationManager NavManager
+@inject ILogger<Login> Logger
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg">
+                <div class="card-body p-5">
+                    <h1 class="card-title text-center mb-4">Inicio de Sesión</h1>
+
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            @ErrorMessage
+                            <button type="button" class="btn-close" @onclick="@(() => ErrorMessage = null)"></button>
+                        </div>
+                    }
+
+                    <form @onsubmit="HandleLogin">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Correo Electrónico</label>
+                            <input
+                                type="email"
+                                class="form-control"
+                                id="email"
+                                @bind="Email"
+                                placeholder="tu@email.com"
+                                required
+                                disabled="@IsLoading" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña</label>
+                            <input
+                                type="password"
+                                class="form-control"
+                                id="password"
+                                @bind="Password"
+                                placeholder="Contraseña"
+                                required
+                                disabled="@IsLoading" />
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary w-100"
+                            disabled="@IsLoading">
+                            @if (IsLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Iniciando sesión</span>
+                            }
+                            else
+                            {
+                                <span>Iniciar Sesión</span>
+                            }
+                        </button>
+                    </form>
+
+                    <hr class="my-4" />
+
+                    <p class="text-center text-muted mb-0">
+                        ¿No tienes cuenta?
+                        <a href="/signup" class="text-decoration-none">Regístrate aquí</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string Email = string.Empty;
+    private string Password = string.Empty;
+    private string? ErrorMessage;
+    private bool IsLoading;
+
+    private async Task HandleLogin()
+    {
+        if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
+        {
+            ErrorMessage = "Por favor completa todos los campos";
+            return;
+        }
+
+        IsLoading = true;
+        ErrorMessage = null;
+
+        try
+        {
+            var (success, error) = await AuthService.LoginAsync(Email, Password);
+
+            if (success)
+            {
+                Logger.LogInformation("Login exitoso para: {Email}", Email);
+                
+                // Notificar al AuthenticationStateProvider
+                var state = AuthService.GetCurrentState();
+                if (state.IsAuthenticated && !string.IsNullOrEmpty(state.UserId))
+                {
+                    var authProvider = AuthStateProvider as Ticketing.Front.Authentication.FirebaseAuthenticationStateProvider;
+                    authProvider?.NotifyUserAuthenticated(state.UserId, state.Email ?? Email);
+                }
+                
+                NavManager.NavigateTo("/");
+            }
+            else
+            {
+                ErrorMessage = error ?? "Error al iniciar sesión";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Excepción durante login");
+            ErrorMessage = "Error inesperado al iniciar sesión";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}
