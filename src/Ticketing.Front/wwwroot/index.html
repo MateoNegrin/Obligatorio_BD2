@@ -28,6 +28,30 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
+
+    <!-- Firebase SDK y módulo de autenticación -->
+    <script type="module">
+        // Cargar configuración de Firebase desde appsettings.json (sin caché)
+        // IMPORTANTE: Esto DEBE completarse ANTES de importar firebase-auth.js
+        async function loadFirebaseConfig() {
+            try {
+                const response = await fetch('appsettings.json?t=' + Date.now());
+                const config = await response.json();
+                window.firebaseConfig = config.firebase;
+                console.log('✓ Firebase config cargada correctamente:', config.firebase);
+                
+                // SOLO DESPUÉS de que la config esté lista, importar el módulo
+                import('./firebase-auth.js').catch(error => {
+                    console.error('✗ Error cargando firebase-auth.js:', error);
+                });
+            } catch (error) {
+                console.error('✗ Error al cargar configuración:', error);
+            }
+        }
+
+        loadFirebaseConfig();
+    </script>
+
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
 </body>
 
