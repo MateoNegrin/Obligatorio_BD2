@@ -19,6 +19,16 @@ public sealed record CrearUsuarioRequest(
     string NumeroDireccion,
     string CodigoPostal);
 
+public sealed record SignUpUsuarioRequest(
+    string NumeroDocumento,
+    string Mail,
+    string Pais,
+    string Localidad,
+    string Calle,
+    string NumeroDireccion,
+    string CodigoPostal,
+    string Password);
+
 public sealed record ActualizarUsuarioRequest(
     string Mail,
     string Pais,
