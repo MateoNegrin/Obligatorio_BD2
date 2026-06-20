@@ -1,0 +1,68 @@
+@implements IAsyncDisposable
+@using Microsoft.JSInterop
+@using Microsoft.Extensions.Configuration
+@inject IJSRuntime JS
+@inject IConfiguration Config
+@inject ILogger<FirebaseInitializer> Logger
+
+@code {
+    private bool initialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Solo inicializar en la primera renderización
+        if (!firstRender || initialized)
+            return;
+
+        try
+        {
+            Logger.LogInformation("Inicializando Firebase desde componente (OnAfterRenderAsync)");
+            
+            // Obtener configuración de Firebase desde appsettings.json
+            var firebaseConfig = Config.GetSection("firebase");
+            
+            if (!firebaseConfig.Exists())
+            {
+                Logger.LogError("Configuración de Firebase no encontrada en appsettings.json");
+                return;
+            }
+            
+            // Crear objeto anónimo con propiedades nombradas explícitamente
+            // Esto garantiza que IJSRuntime lo serialice correctamente a JSON
+            var configObject = new
+            {
+                apiKey = firebaseConfig["apiKey"],
+                authDomain = firebaseConfig["authDomain"],
+                projectId = firebaseConfig["projectId"],
+                storageBucket = firebaseConfig["storageBucket"],
+                messagingSenderId = firebaseConfig["messagingSenderId"],
+                appId = firebaseConfig["appId"]
+            };
+            
+            Logger.LogInformation("Config a pasar a Firebase: {@Config}", configObject);
+            
+            // Inicializar Firebase
+            bool success = await JS.InvokeAsync<bool>("window.firebaseAuth.initialize", configObject);
+            
+            if (success)
+            {
+                Logger.LogInformation("✓ Firebase inicializado correctamente");
+                initialized = true;
+            }
+            else
+            {
+                Logger.LogError("✗ Error al inicializar Firebase");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Excepción al inicializar Firebase: {Message}", ex.Message);
+        }
+    }
+    
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        // Cleanup si es necesario
+        await Task.CompletedTask;
+    }
+}

@@ -185,6 +185,92 @@ que aparezcan en Swagger, pero quedan en `NotImplementedException` con su `// TO
 
 ---
 
+## Autenticación Firebase (✨ NUEVO)
+
+El proyecto usa **Firebase Authentication** para gestionar usuarios. El flujo es:
+
+### En el Backend (API)
+
+1. **Validación de tokens:** Middleware `FirebaseTokenValidationMiddleware` valida el JWT recibido en el header `Authorization: Bearer <token>`
+2. **Servicios:** `IFirebaseAuthService` valida tokens usando `FirebaseAdmin` SDK
+3. **Autorización:** Endpoints con `[Authorize]` solo aceptan tokens válidos
+
+**Archivos:**
+- `src/Ticketing.Application/Firebase/FirebaseDependencyInjection.cs` — Registro de servicios
+- `src/Ticketing.Application/Services/FirebaseAuthService.cs` — Validación de tokens
+- `src/Ticketing.Application/Services/FirebaseTokenValidationMiddleware.cs` — Middleware
+
+**Cómo proteger un endpoint:**
+```csharp
+[HttpGet]
+[Authorize]  // ← Solo usuarios autenticados
+public async Task<IActionResult> GetUserData()
+{
+    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    // ...
+}
+```
+
+### En el Frontend (Blazor)
+
+1. **Login/Signup:** Usuario crea o inicia sesión en Firebase (páginas `/login` y `/signup`)
+2. **Token storage:** ID token se guarda en memoria (seguro, no localStorage)
+3. **AuthenticationStateProvider:** `FirebaseAuthenticationStateProvider` cascada el estado de autenticación
+4. **API calls:** Token se agrega automáticamente al header de todas las solicitudes
+
+**Archivos:**
+- `src/Ticketing.Front/Services/FirebaseAuthenticationService.cs` — Orquestación de auth
+- `src/Ticketing.Front/Authentication/FirebaseAuthenticationStateProvider.cs` — State cascading
+- `src/Ticketing.Front/wwwroot/firebase-auth.js` — Bridge con Firebase SDK
+- `src/Ticketing.Front/Pages/Login.razor` — Página de login
+- `src/Ticketing.Front/Pages/Signup.razor` — Página de registro
+
+**Cómo proteger una página:**
+```razor
+@page "/admin"
+@attribute [Authorize]
+
+<p>Solo usuarios autenticados ven esto</p>
+```
+
+**Datos de prueba:**
+```
+Email: test@example.com
+Password: password123
+```
+
+### Flujo de una solicitud autenticada
+
+```
+Usuario inicia sesión en /login
+↓
+FirebaseAuthenticationService.LoginAsync()
+↓
+JS interop → window.firebaseAuth.login()
+↓
+Firebase retorna ID token
+↓
+Se guarda en memoria + se notifica AuthenticationStateProvider
+↓
+Usuario navegua a página protegida
+↓
+En cada solicitud HTTP:
+  - Token se extrae de memoria
+  - Se agrega header: Authorization: Bearer <token>
+↓
+Backend recibe solicitud
+↓
+FirebaseTokenValidationMiddleware valida token
+↓
+Se crean Claims con userId y email
+↓
+Endpoint [Authorize] acepta la solicitud
+↓
+Respuesta al usuario
+```
+
+---
+
 ## Comandos útiles
 
 ```bash

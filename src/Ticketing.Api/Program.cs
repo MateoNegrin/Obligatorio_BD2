@@ -1,4 +1,6 @@
 using Ticketing.Application;
+using Ticketing.Application.Firebase;
+using Ticketing.Application.Services;
 using Ticketing.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +14,18 @@ builder.Services.AddSwaggerGen();
 // Capas de la solución.
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructure();
+
+// Firebase Authentication
+var firebaseJsonPath = Path.Combine(builder.Environment.ContentRootPath, "firebase-credentials.json");
+if (File.Exists(firebaseJsonPath))
+{
+    var firebaseJson = File.ReadAllText(firebaseJsonPath);
+    builder.Services.AddFirebaseAuthentication(firebaseJson);
+}
+else
+{
+    Console.WriteLine("ADVERTENCIA: Archivo firebase-credentials.json no encontrado. Firebase no está inicializado.");
+}
 
 // CORS para el front Blazor WASM (en Development abrimos cualquier origen).
 builder.Services.AddCors(options =>
@@ -30,6 +44,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors(FrontCorsPolicy);
+
+// Middleware de validación de tokens Firebase
+app.UseMiddleware<FirebaseTokenValidationMiddleware>();
+
 app.MapControllers();
 
 app.Run();

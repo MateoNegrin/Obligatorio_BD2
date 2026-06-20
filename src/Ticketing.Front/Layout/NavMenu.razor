@@ -1,6 +1,21 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject FirebaseAuthenticationService AuthService
+@inject NavigationManager NavManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Ticketing</a>
+        
+        <AuthorizeView>
+            <NotAuthorized>
+                <div class="d-flex gap-2 ms-auto">
+                    <a href="/login" class="btn btn-sm btn-outline-light">Iniciar Sesión</a>
+                    <a href="/signup" class="btn btn-sm btn-primary">Registrarse</a>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+        
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -9,36 +24,45 @@
 
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="equipos">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Equipos
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="estadios">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Estadios
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="eventos">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Eventos
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="usuarios">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Usuarios
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="metricas">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Métricas
-            </NavLink>
-        </div>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="equipos">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Equipos
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="estadios">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Estadios
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="eventos">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Eventos
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="usuarios">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Usuarios
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="metricas">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Métricas
+                    </NavLink>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <p class="text-muted">Inicia sesión para ver más contenido</p>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
     </nav>
 </div>
 

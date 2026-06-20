@@ -15,6 +15,7 @@ con acceso a datos en **ADO.NET puro sobre MySQL** (sin ORM) y un front mínimo 
 
 - [.NET SDK 10](https://dotnet.microsoft.com/download) (LTS).
 - Acceso a red remota (para conectar a `mysql.reto-ucu.net:50006`).
+- **Autenticación Firebase:** Acceso al proyecto Firebase `obligatoriobd2` con credenciales configuradas.
 
 ## 1. Verificar conexión a la base de datos
 
@@ -90,6 +91,28 @@ database/
   02_seed.sql                Datos semilla (opcional)
 ```
 
+## 5. Autenticación Firebase
+
+El frontend está integrado con **Firebase Authentication** (Email/Password). No requiere configuración adicional para desarrollo.
+
+### Credenciales Firebase (ya configuradas)
+```
+projectId: obligatoriobd2
+apiKey: AIzaSyBzf4u_99g7889T_uJh1ZZwhntVPjtKu7E
+authDomain: obligatoriobd2.firebaseapp.com
+```
+
+### Flujo
+1. Usuario crea cuenta en `/signup` → Se registra en Firebase + se persiste en MySQL
+2. Usuario inicia sesión en `/login` → Firebase genera ID token
+3. Token se valida en backend (middleware `FirebaseTokenValidationMiddleware`)
+4. Endpoints protegidos usan `[Authorize]` para validar token
+
+### Archivos relevantes
+- Backend: `src/Ticketing.Application/Firebase/` (servicios de validación)
+- Frontend: `src/Ticketing.Front/Services/FirebaseAuthenticationService.cs` (orquestación)
+- Frontend: `src/Ticketing.Front/wwwroot/firebase-auth.js` (integración con SDK)
+
 ## Tecnologías
 
 - **Backend:** .NET 10 (LTS), ASP.NET Core 10
@@ -97,3 +120,4 @@ database/
 - **Driver:** MySql.Data v9.0.0 (ADO.NET puro, sin ORM)
 - **Frontend:** Blazor WebAssembly
 - **API:** OpenAPI/Swagger
+- **Autenticación:** Firebase Admin SDK (backend) + Firebase JS SDK (frontend)

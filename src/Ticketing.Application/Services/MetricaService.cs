@@ -15,9 +15,15 @@ public sealed class MetricaService : IMetricaService
 
     public MetricaService(IMetricaRepository repository) => _repository = repository;
 
-    public Task<IReadOnlyList<EventoMasVendidoResponse>> GetEventosMasVendidosAsync(int top = 10, CancellationToken ct = default)
-        => throw new NotImplementedException();
+    public async Task<IReadOnlyList<EventoMasVendidoResponse>> GetEventosMasVendidosAsync(int top = 10, CancellationToken ct = default)
+    {
+        var eventos = await _repository.GetEventosMasVendidosAsync(top, ct);
+        return eventos.Select(e => new EventoMasVendidoResponse(e.IdEventoDeportivo, e.EntradasVendidas)).ToList();
+    }
 
-    public Task<IReadOnlyList<MayorCompradorResponse>> GetMayoresCompradoresAsync(int top = 10, CancellationToken ct = default)
-        => throw new NotImplementedException();
+    public async Task<IReadOnlyList<MayorCompradorResponse>> GetMayoresCompradoresAsync(int top = 10, CancellationToken ct = default)
+    {
+        var compradores = await _repository.GetMayoresCompradoresAsync(top, ct);
+        return compradores.Select(c => new MayorCompradorResponse(c.NumeroDocumento, c.Mail, c.EntradasCompradas)).ToList();
+    }
 }

@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Firebase credentials (NEVER commit to Git)
+firebase-credentials.json
