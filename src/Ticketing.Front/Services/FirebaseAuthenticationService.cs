@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 
 namespace Ticketing.Front.Services;
 
-public sealed record FirebaseAuthenticationState(bool IsAuthenticated, string? UserId, string? Email);
+public sealed record FirebaseAuthenticationState(bool IsAuthenticated, string? UserId, string? Email, string? Role = null);
 
 public sealed record LoginRequest(string Email, string Password);
 
@@ -22,6 +22,11 @@ public sealed record SignUpCompleteRequest(
     string NumeroDireccion,
     string CodigoPostal);
 
+public sealed record UserRoleResponse(
+    string NumeroDocumento,
+    string Mail,
+    string Role);
+
 public interface IAuthenticationService
 {
     Task<(bool Success, string? ErrorMessage)> LoginAsync(string email, string password);
@@ -30,6 +35,8 @@ public interface IAuthenticationService
     Task LogoutAsync();
     Task<string?> GetCurrentUserTokenAsync();
     FirebaseAuthenticationState GetCurrentState();
+    Task<UserRoleResponse?> GetUserRoleAsync();
+    void SetUserRole(string role);
 }
 
 public sealed class FirebaseAuthenticationService : IAuthenticationService
@@ -40,6 +47,7 @@ public sealed class FirebaseAuthenticationService : IAuthenticationService
     private string? _currentToken;
     private string? _currentUserId;
     private string? _currentEmail;
+    private string? _currentRole;
 
     public FirebaseAuthenticationService(
         HttpClient httpClient,
@@ -233,6 +241,7 @@ public sealed class FirebaseAuthenticationService : IAuthenticationService
             _currentToken = null;
             _currentUserId = null;
             _currentEmail = null;
+            _currentRole = null;
             _logger.LogInformation("Sesión cerrada exitosamente");
         }
         catch (Exception ex)
@@ -265,7 +274,61 @@ public sealed class FirebaseAuthenticationService : IAuthenticationService
         return new(
             !string.IsNullOrEmpty(_currentToken),
             _currentUserId,
-            _currentEmail);
+            _currentEmail,
+            _currentRole);
+    }
+
+    public async Task<UserRoleResponse?> GetUserRoleAsync()
+    {
+        try
+        {
+            _logger.LogInformation("GetUserRoleAsync: Iniciando obtención de rol");
+            var token = await GetCurrentUserTokenAsync();
+            _logger.LogInformation("GetUserRoleAsync: Token obtenido: {Token}", 
+                string.IsNullOrEmpty(token) ? "NULL/VACIO" : $"presente ({token.Length} chars)");
+            
+            if (string.IsNullOrEmpty(token))
+            {
+                _logger.LogWarning("GetUserRoleAsync: Token vacío, no se puede obtener rol");
+                return null;
+            }
+
+            var request = new HttpRequestMessage(HttpMethod.Get, "api/Auth/role");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            
+            _logger.LogInformation("GetUserRoleAsync: Enviando solicitud a api/Auth/role");
+            var response = await _httpClient.SendAsync(request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var roleResponse = System.Text.Json.JsonSerializer.Deserialize<UserRoleResponse>(
+                    content,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (roleResponse != null)
+                {
+                    _currentRole = roleResponse.Role;
+                    _logger.LogInformation("Rol obtenido exitosamente: {Role}", roleResponse.Role);
+                }
+                return roleResponse;
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("GetUserRoleAsync: Error obteniendo rol: {StatusCode} {Content}", 
+                response.StatusCode, errorContent);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error obteniendo rol del usuario");
+            return null;
+        }
+    }
+
+    public void SetUserRole(string role)
+    {
+        _currentRole = role;
+        _logger.LogInformation("Rol establecido: {Role}", role);
     }
 }
 

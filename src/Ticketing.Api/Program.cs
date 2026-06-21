@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Ticketing.Application;
 using Ticketing.Application.Firebase;
 using Ticketing.Application.Services;
@@ -27,11 +28,20 @@ else
     Console.WriteLine("ADVERTENCIA: Archivo firebase-credentials.json no encontrado. Firebase no está inicializado.");
 }
 
+// Configurar autenticación (esquema JWT para que [Authorize] funcione)
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer();
+
 // CORS para el front Blazor WASM (en Development abrimos cualquier origen).
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(FrontCorsPolicy, policy =>
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+        policy
+            .WithOrigins("http://localhost:5199", "https://localhost:5199")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials());
 });
 
 var app = builder.Build();
@@ -43,10 +53,15 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseRouting();
 app.UseCors(FrontCorsPolicy);
 
-// Middleware de validación de tokens Firebase
+// Middleware de validación de tokens Firebase (DEBE estar antes de UseAuthorization)
 app.UseMiddleware<FirebaseTokenValidationMiddleware>();
+
+// Middleware de autenticación y autorización
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

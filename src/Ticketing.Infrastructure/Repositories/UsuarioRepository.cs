@@ -105,4 +105,62 @@ public sealed class UsuarioRepository : IUsuarioRepository
         cmd.Parameters.AddWithValue("@numero_documento", numeroDocumento);
         await cmd.ExecuteNonQueryAsync(ct);
     }
+
+    public async Task<string?> GetUserRoleAsync(string numeroDocumento, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        
+        // Verificar si es administrador
+        await using var cmdAdmin = new MySqlCommand(
+            "SELECT numero_documento FROM administrador WHERE numero_documento = @numero_documento",
+            (MySqlConnection)conn);
+        cmdAdmin.Parameters.AddWithValue("@numero_documento", numeroDocumento);
+        await using var readerAdmin = await cmdAdmin.ExecuteReaderAsync(ct);
+        if (await readerAdmin.ReadAsync(ct))
+            return "Admin";
+        
+        // Verificar si es funcionario (supervisor)
+        await using var cmdFunc = new MySqlCommand(
+            "SELECT numero_documento FROM funcionario WHERE numero_documento = @numero_documento",
+            (MySqlConnection)conn);
+        cmdFunc.Parameters.AddWithValue("@numero_documento", numeroDocumento);
+        await using var readerFunc = await cmdFunc.ExecuteReaderAsync(ct);
+        if (await readerFunc.ReadAsync(ct))
+            return "Supervisor";
+        
+        // Si no es admin ni funcionario, es usuario general
+        return "General";
+    }
+
+    public async Task<(string NumeroDocumento, string? Role)> GetUserRoleByEmailAsync(string email, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        
+        // Query única que obtiene el documento y determina el rol
+        await using var cmd = new MySqlCommand(
+            @"SELECT 
+                u.numero_documento,
+                CASE 
+                    WHEN a.numero_documento IS NOT NULL THEN 'Admin'
+                    WHEN f.numero_documento IS NOT NULL THEN 'Supervisor'
+                    ELSE 'General'
+                END AS role
+              FROM usuario u
+              LEFT JOIN administrador a ON u.numero_documento = a.numero_documento
+              LEFT JOIN funcionario f ON u.numero_documento = f.numero_documento
+              WHERE u.mail = @mail",
+            (MySqlConnection)conn);
+        cmd.Parameters.AddWithValue("@mail", email);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        
+        if (await reader.ReadAsync(ct))
+        {
+            var numeroDocumento = reader.GetString(0);
+            var role = reader.IsDBNull(1) ? "General" : reader.GetString(1);
+            return (numeroDocumento, role);
+        }
+        
+        return (string.Empty, null); // Usuario no existe
+    }
 }
+
