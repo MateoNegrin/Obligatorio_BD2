@@ -11,6 +11,16 @@ con acceso a datos en **ADO.NET puro sobre MySQL** (sin ORM) y un front mínimo 
 >
 > Para entender cómo está organizado el código y cómo trabajar sobre él, ver **[GUIA.md](GUIA.md)**.
 
+## Quick Start — Credenciales de Prueba
+
+Para testear el sistema, usa estas credenciales (todas con contraseña `prueba1`):
+
+| Email | Rol | Acceso |
+|-------|-----|--------|
+| `test@email.com` | General | Compra de entradas |
+| `supervisor@email.com` | Supervisor | Compra + Escaneo QR |
+| `admin@email.com` | Admin | Acceso completo |
+
 ## Requisitos
 
 - [.NET SDK 10](https://dotnet.microsoft.com/download) (LTS).
