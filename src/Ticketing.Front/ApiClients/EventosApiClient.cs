@@ -11,4 +11,7 @@ public sealed class EventosApiClient
 
     public async Task<IReadOnlyList<EventoResponse>> GetAllAsync(CancellationToken ct = default)
         => await _http.GetFromJsonAsync<IReadOnlyList<EventoResponse>>("api/Eventos", ct) ?? [];
+
+    public async Task<IReadOnlyList<SectorDisponibleResponse>> GetSectoresDisponiblesAsync(int idEvento, CancellationToken ct = default)
+        => await _http.GetFromJsonAsync<IReadOnlyList<SectorDisponibleResponse>>($"api/Eventos/{idEvento}/sectores-disponibles", ct) ?? [];
 }

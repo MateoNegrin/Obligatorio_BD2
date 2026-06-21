@@ -11,5 +11,6 @@ public interface IEventoRepository
     Task DeleteAsync(int id, CancellationToken ct = default);
 
     Task<IReadOnlyList<InformacionEntrada>> GetSectoresHabilitadosAsync(int idEvento, CancellationToken ct = default);
+    Task<IReadOnlyList<SectorDisponibilidad>> GetSectoresDisponiblesAsync(int idEvento, CancellationToken ct = default);
     Task HabilitarSectorAsync(InformacionEntrada info, CancellationToken ct = default);
 }

@@ -55,6 +55,11 @@ public sealed class EventosController : ControllerBase
     public async Task<IActionResult> GetSectoresHabilitados(int id, CancellationToken ct)
         => Ok(await _service.GetSectoresHabilitadosAsync(id, ct));
 
+    [HttpGet("{id:int}/sectores-disponibles")]
+    [ProducesResponseType(typeof(IReadOnlyList<SectorDisponibleResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSectoresDisponibles(int id, CancellationToken ct)
+        => Ok(await _service.GetSectoresDisponiblesAsync(id, ct));
+
     [HttpPost("{id:int}/sectores")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> HabilitarSector(int id, HabilitarSectorRequest request, CancellationToken ct)

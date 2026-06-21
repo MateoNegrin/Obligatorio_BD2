@@ -22,11 +22,11 @@ else if (_eventos.Count == 0)
 else
 {
     <table class="table">
-        <thead><tr><th>Id</th><th>Local</th><th>Visitante</th><th>Fecha</th><th>Hora</th></tr></thead>
+        <thead><tr><th>Id</th><th>Local</th><th>Visitante</th><th>Estadio</th><th>Fecha</th><th>Hora</th><th>Disponibles</th></tr></thead>
         <tbody>
         @foreach (var e in _eventos)
         {
-            <tr><td>@e.Id</td><td>@e.IdEquipoLocal</td><td>@e.IdEquipoVisitante</td><td>@e.Fecha</td><td>@e.Hora</td></tr>
+            <tr><td>@e.Id</td><td>@e.NombreLocal</td><td>@e.NombreVisitante</td><td>@e.NombreEstadio</td><td>@e.Fecha</td><td>@e.Hora</td><td>@e.EntradasDisponibles</td></tr>
         }
         </tbody>
     </table>

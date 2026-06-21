@@ -4,9 +4,21 @@ public sealed record EventoResponse(
     int Id,
     int IdEquipoLocal,
     int IdEquipoVisitante,
+    string NombreLocal,
+    string NombreVisitante,
+    string NombreEstadio,
     DateOnly Fecha,
     TimeOnly Hora,
-    int CantidadEntradas);
+    int CantidadEntradas,
+    int EntradasDisponibles);
+
+// Sector habilitado para un evento con su disponibilidad de entradas.
+public sealed record SectorDisponibleResponse(
+    int IdSector,
+    string Nombre,
+    int Capacidad,
+    int EntradasVendidas,
+    int EntradasDisponibles);
 
 public sealed record CrearEventoRequest(
     int IdEquipoLocal,

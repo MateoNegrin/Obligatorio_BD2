@@ -35,7 +35,7 @@
                                 <option value="">Selecciona un evento</option>
                                 @foreach (var evento in Eventos)
                                 {
-                                    <option value="@evento.IdEventoDeportivo">@evento.Nombre</option>
+                                    <option value="@evento.Id">@evento.NombreLocal vs @evento.NombreVisitante · @evento.Fecha.ToString("dd/MM/yyyy")@(string.IsNullOrWhiteSpace(evento.NombreEstadio) ? "" : $" · {evento.NombreEstadio}")</option>
                                 }
                             </select>
                         </div>
@@ -46,10 +46,22 @@
                                 <option value="">Selecciona un sector</option>
                                 @foreach (var sector in Sectores)
                                 {
-                                    <option value="@sector.IdSector">@sector.Nombre</option>
+                                    var agotado = sector.EntradasDisponibles <= 0;
+                                    <option value="@sector.IdSector" disabled="@agotado" style="@(agotado ? "color:#ef4444;" : "")">
+                                        @sector.Nombre — @(agotado ? "Agotado" : $"{sector.EntradasDisponibles} disponibles")
+                                    </option>
                                 }
                             </select>
                         </div>
+
+                        @if (SelectedSector is not null)
+                        {
+                            <div class="mb-3">
+                                <p class="text-muted mb-0">
+                                    Quedan <strong>@SelectedSector.EntradasDisponibles</strong> entradas disponibles en el sector <strong>@SelectedSector.Nombre</strong>.
+                                </p>
+                            </div>
+                        }
 
                         <div class="mb-3">
                             <label for="cantidad" class="form-label">Cantidad de Entradas (1-5)</label>
@@ -113,6 +125,8 @@
         }
     }
     private string SelectedSectorId = "";
+    private SectorDto? SelectedSector =>
+        Sectores.FirstOrDefault(s => s.IdSector.ToString() == SelectedSectorId);
     private int Cantidad = 1;
     private string? ErrorMessage;
     private string? SuccessMessage;
@@ -150,7 +164,7 @@
     {
         try
         {
-            var response = await HttpClient.GetAsync($"api/Sectores?eventoId={eventoId}");
+            var response = await HttpClient.GetAsync($"api/Eventos/{eventoId}/sectores-disponibles");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -163,32 +177,6 @@
         {
             Logger.LogError(ex, "Error cargando sectores");
             ErrorMessage = "Error al cargar sectores";
-        }
-    }
-
-    private async Task OnEventoChanged(ChangeEventArgs e)
-    {
-        SelectedEventoId = e.Value?.ToString() ?? "";
-        SelectedSectorId = "";
-        Sectores = new();
-
-        if (!string.IsNullOrEmpty(SelectedEventoId))
-        {
-            try
-            {
-                var response = await HttpClient.GetAsync($"api/Sectores?eventoId={SelectedEventoId}");
-                if (response.IsSuccessStatusCode)
-                {
-                    var content = await response.Content.ReadAsStringAsync();
-                    Sectores = System.Text.Json.JsonSerializer.Deserialize<List<SectorDto>>(content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
-                    Logger.LogInformation("Sectores cargados: {Count}", Sectores.Count);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error cargando sectores");
-                ErrorMessage = "Error al cargar sectores";
-            }
         }
     }
 
@@ -249,11 +237,16 @@
     }
 
     private record EventoDto(
-        int IdEventoDeportivo,
-        string Nombre,
-        DateTime Fecha);
+        int Id,
+        string NombreLocal,
+        string NombreVisitante,
+        string NombreEstadio,
+        DateOnly Fecha);
 
     private record SectorDto(
         int IdSector,
-        string Nombre);
+        string Nombre,
+        int Capacidad,
+        int EntradasVendidas,
+        int EntradasDisponibles);
 }
