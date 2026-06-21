@@ -91,9 +91,9 @@ database/
   02_seed.sql                Datos semilla (opcional)
 ```
 
-## 5. Autenticación Firebase
+## 5. Autenticación Firebase y Control de Acceso por Roles
 
-El frontend está integrado con **Firebase Authentication** (Email/Password). No requiere configuración adicional para desarrollo.
+El frontend está integrado con **Firebase Authentication** (Email/Password). La autenticación se combina con un **sistema de roles basado en la jerarquía ISA** de la base de datos para proporcionar control de acceso granular.
 
 ### Credenciales Firebase (ya configuradas)
 ```
@@ -102,15 +102,51 @@ apiKey: AIzaSyBzf4u_99g7889T_uJh1ZZwhntVPjtKu7E
 authDomain: obligatoriobd2.firebaseapp.com
 ```
 
-### Flujo
+### Flujo de Autenticación
 1. Usuario crea cuenta en `/signup` → Se registra en Firebase + se persiste en MySQL
 2. Usuario inicia sesión en `/login` → Firebase genera ID token
 3. Token se valida en backend (middleware `FirebaseTokenValidationMiddleware`)
-4. Endpoints protegidos usan `[Authorize]` para validar token
+4. Frontend obtiene el rol del usuario: `GET /api/Auth/role`
+5. Rol determina visibilidad del menú de navegación
+6. Endpoints protegidos usan `[Authorize]` para validar token
+
+### Sistema de Roles (Jerarquía ISA)
+Los roles se determinan automáticamente basados en las tablas `usuario`, `administrador` y `funcionario`:
+
+| Rol | Tabla | Menú Disponible |
+|-----|-------|-----------------|
+| **Admin** | `administrador.numero_documento` | Home, Eventos, Comprar Entradas, Escanear QR, Equipos, Estadios, Usuarios, Métricas |
+| **Supervisor** | `funcionario.numero_documento` | Home, Eventos, Comprar Entradas, Escanear QR |
+| **General** | Solo en `usuario` | Home, Eventos, Comprar Entradas |
+
+### Credenciales de Prueba (Contraseña: `prueba1`)
+
+Usa estas cuentas para testear los diferentes niveles de rol:
+
+```
+Usuario General:
+  Email: test@email.com
+  Rol: General
+  Acceso: Compra de entradas
+
+Usuario Supervisor:
+  Email: supervisor@email.com
+  Rol: Supervisor
+  Acceso: Compra de entradas + Escaneo de QR
+
+Usuario Admin:
+  Email: admin@email.com
+  Rol: Admin
+  Acceso: Todas las funcionalidades del sistema
+```
 
 ### Archivos relevantes
 - Backend: `src/Ticketing.Application/Firebase/` (servicios de validación)
+- Backend: `src/Ticketing.Api/Controllers/AuthController.cs` (endpoint GET /api/Auth/role)
+- Backend: `src/Ticketing.Infrastructure/Repositories/UsuarioRepository.cs` (lógica de detección de rol)
 - Frontend: `src/Ticketing.Front/Services/FirebaseAuthenticationService.cs` (orquestación)
+- Frontend: `src/Ticketing.Front/Authentication/FirebaseAuthenticationStateProvider.cs` (estado de autenticación)
+- Frontend: `src/Ticketing.Front/Layout/NavMenu.razor` (menú reactivo por rol)
 - Frontend: `src/Ticketing.Front/wwwroot/firebase-auth.js` (integración con SDK)
 
 ## Tecnologías
