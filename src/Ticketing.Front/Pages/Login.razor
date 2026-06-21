@@ -99,12 +99,16 @@
             {
                 Logger.LogInformation("Login exitoso para: {Email}", Email);
                 
+                // Obtener el rol del usuario
+                var roleResponse = await AuthService.GetUserRoleAsync();
+                var role = roleResponse?.Role ?? "General";
+                
                 // Notificar al AuthenticationStateProvider
                 var state = AuthService.GetCurrentState();
                 if (state.IsAuthenticated && !string.IsNullOrEmpty(state.UserId))
                 {
                     var authProvider = AuthStateProvider as Ticketing.Front.Authentication.FirebaseAuthenticationStateProvider;
-                    authProvider?.NotifyUserAuthenticated(state.UserId, state.Email ?? Email);
+                    authProvider?.NotifyUserAuthenticated(state.UserId, state.Email ?? Email, role);
                 }
                 
                 NavManager.NavigateTo("/");

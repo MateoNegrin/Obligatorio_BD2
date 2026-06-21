@@ -1,0 +1,259 @@
+@page "/venta"
+@using System.Net.Http.Json
+
+@inject HttpClient HttpClient
+@inject ILogger<Venta> Logger
+@inject NavigationManager NavManager
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-body p-5">
+                    <h1 class="card-title mb-4">Comprar Entradas</h1>
+
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            @ErrorMessage
+                            <button type="button" class="btn-close" @onclick="@(() => ErrorMessage = null)"></button>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(SuccessMessage))
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            @SuccessMessage
+                            <button type="button" class="btn-close" @onclick="@(() => SuccessMessage = null)"></button>
+                        </div>
+                    }
+
+                    <form @onsubmit="HandleCompra">
+                        <div class="mb-3">
+                            <label for="evento" class="form-label">Evento Deportivo</label>
+                            <select class="form-select" id="evento" @bind="SelectedEventoId" disabled="@IsLoading">
+                                <option value="">Selecciona un evento</option>
+                                @foreach (var evento in Eventos)
+                                {
+                                    <option value="@evento.IdEventoDeportivo">@evento.Nombre</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="sector" class="form-label">Sector</label>
+                            <select class="form-select" id="sector" @bind="SelectedSectorId" disabled="@(IsLoading || string.IsNullOrEmpty(SelectedEventoId))">
+                                <option value="">Selecciona un sector</option>
+                                @foreach (var sector in Sectores)
+                                {
+                                    <option value="@sector.IdSector">@sector.Nombre</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="cantidad" class="form-label">Cantidad de Entradas (1-5)</label>
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="cantidad"
+                                @bind="Cantidad"
+                                min="1"
+                                max="5"
+                                disabled="@IsLoading" />
+                        </div>
+
+                        <div class="mb-3">
+                            <p class="text-muted">
+                                <strong>Monto Total:</strong> $@(Cantidad * 100)
+                            </p>
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary w-100"
+                            disabled="@(IsLoading || string.IsNullOrEmpty(SelectedEventoId) || string.IsNullOrEmpty(SelectedSectorId) || Cantidad < 1)">
+                            @if (IsLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Procesando compra...</span>
+                            }
+                            else
+                            {
+                                <span>Comprar Entradas</span>
+                            }
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<EventoDto> Eventos = new();
+    private List<SectorDto> Sectores = new();
+    private string _selectedEventoId = "";
+    private string SelectedEventoId 
+    { 
+        get => _selectedEventoId;
+        set
+        {
+            if (_selectedEventoId != value)
+            {
+                _selectedEventoId = value;
+                SelectedSectorId = "";
+                Sectores = new();
+                
+                if (!string.IsNullOrEmpty(value))
+                {
+                    _ = LoadSectoresAsync(value);
+                }
+            }
+        }
+    }
+    private string SelectedSectorId = "";
+    private int Cantidad = 1;
+    private string? ErrorMessage;
+    private string? SuccessMessage;
+    private bool IsLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Cargar eventos
+            var response = await HttpClient.GetAsync("api/Eventos");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Eventos = System.Text.Json.JsonSerializer.Deserialize<List<EventoDto>>(content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                Logger.LogInformation("Eventos cargados: {Count}", Eventos.Count);
+            }
+            else
+            {
+                ErrorMessage = "Error al cargar eventos";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error cargando eventos");
+            ErrorMessage = "Error al cargar eventos";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task LoadSectoresAsync(string eventoId)
+    {
+        try
+        {
+            var response = await HttpClient.GetAsync($"api/Sectores?eventoId={eventoId}");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Sectores = System.Text.Json.JsonSerializer.Deserialize<List<SectorDto>>(content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                Logger.LogInformation("Sectores cargados: {Count}", Sectores.Count);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error cargando sectores");
+            ErrorMessage = "Error al cargar sectores";
+        }
+    }
+
+    private async Task OnEventoChanged(ChangeEventArgs e)
+    {
+        SelectedEventoId = e.Value?.ToString() ?? "";
+        SelectedSectorId = "";
+        Sectores = new();
+
+        if (!string.IsNullOrEmpty(SelectedEventoId))
+        {
+            try
+            {
+                var response = await HttpClient.GetAsync($"api/Sectores?eventoId={SelectedEventoId}");
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    Sectores = System.Text.Json.JsonSerializer.Deserialize<List<SectorDto>>(content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                    Logger.LogInformation("Sectores cargados: {Count}", Sectores.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error cargando sectores");
+                ErrorMessage = "Error al cargar sectores";
+            }
+        }
+    }
+
+    private async Task HandleCompra()
+    {
+        if (string.IsNullOrEmpty(SelectedEventoId) || string.IsNullOrEmpty(SelectedSectorId) || Cantidad < 1 || Cantidad > 5)
+        {
+            ErrorMessage = "Por favor completa todos los campos correctamente";
+            return;
+        }
+
+        IsLoading = true;
+        ErrorMessage = null;
+        SuccessMessage = null;
+
+        try
+        {
+            var request = new
+            {
+                IdEventoDeportivo = int.Parse(SelectedEventoId),
+                IdSector = int.Parse(SelectedSectorId),
+                Cantidad = Cantidad
+            };
+
+            var response = await HttpClient.PostAsJsonAsync("api/Ventas/comprar", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                SuccessMessage = $"¡Compra exitosa! Pagaste ${Cantidad * 100}";
+                Logger.LogInformation("Compra exitosa: {Cantidad} entradas", Cantidad);
+                
+                // Limpiar formulario
+                SelectedEventoId = "";
+                SelectedSectorId = "";
+                Sectores = new();
+                Cantidad = 1;
+                
+                // Redirigir después de 2 segundos
+                await Task.Delay(2000);
+                NavManager.NavigateTo("/");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                ErrorMessage = "Error al procesar la compra. Por favor intenta nuevamente.";
+                Logger.LogWarning("Error en compra: {Status} - {Content}", response.StatusCode, errorContent);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error procesando compra");
+            ErrorMessage = "Error inesperado al procesar la compra";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private record EventoDto(
+        int IdEventoDeportivo,
+        string Nombre,
+        DateTime Fecha);
+
+    private record SectorDto(
+        int IdSector,
+        string Nombre);
+}

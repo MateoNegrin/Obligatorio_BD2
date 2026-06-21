@@ -1,0 +1,196 @@
+@page "/qr-scanner"
+@using System.Net.Http.Json
+
+@inject HttpClient HttpClient
+@inject ILogger<QrScanner> Logger
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-body p-5">
+                    <h1 class="card-title mb-4">Escanear Código QR</h1>
+
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            @ErrorMessage
+                            <button type="button" class="btn-close" @onclick="@(() => ErrorMessage = null)"></button>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(SuccessMessage))
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            @SuccessMessage
+                            <button type="button" class="btn-close" @onclick="@(() => SuccessMessage = null)"></button>
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label for="qrInput" class="form-label">Código QR</label>
+                        <input
+                            type="text"
+                            class="form-control form-control-lg"
+                            id="qrInput"
+                            @bind="QrCode"
+                            @onkeydown="HandleQrInput"
+                            placeholder="Escanea el código QR aquí..."
+                            autofocus />
+                    </div>
+
+                    <div class="mb-3">
+                        <button
+                            type="button"
+                            class="btn btn-primary w-100"
+                            @onclick="ValidateQr"
+                            disabled="@(string.IsNullOrEmpty(QrCode) || IsValidating)">
+                            @if (IsValidating)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Validando...</span>
+                            }
+                            else
+                            {
+                                <span>Validar Entrada</span>
+                            }
+                        </button>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(ValidationStatus))
+                    {
+                        <div class="alert @(IsValidated ? "alert-success" : "alert-warning")">
+                            <strong>Resultado:</strong> @ValidationStatus
+                        </div>
+                    }
+
+                    <hr />
+
+                    <h5>Historial de Validaciones</h5>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        @if (ValidationHistory.Count == 0)
+                        {
+                            <p class="text-muted">Sin validaciones aún</p>
+                        }
+                        else
+                        {
+                            <table class="table table-sm table-hover">
+                                <tbody>
+                                    @foreach (var record in ValidationHistory)
+                                    {
+                                        <tr class="@(record.Success ? "table-success" : "table-danger")">
+                                            <td>
+                                                <small>
+                                                    <strong>@record.QrCode</strong>
+                                                    <br />
+                                                    @record.Timestamp.ToString("HH:mm:ss")
+                                                </small>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string QrCode = "";
+    private string? ErrorMessage;
+    private string? SuccessMessage;
+    private string? ValidationStatus;
+    private bool IsValidating = false;
+    private bool IsValidated = false;
+    private List<ValidationRecord> ValidationHistory = new();
+
+    private async Task HandleQrInput(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ValidateQr();
+        }
+    }
+
+    private async Task ValidateQr()
+    {
+        if (string.IsNullOrWhiteSpace(QrCode))
+        {
+            ErrorMessage = "Ingresa un código QR";
+            return;
+        }
+
+        IsValidating = true;
+        ErrorMessage = null;
+        SuccessMessage = null;
+        ValidationStatus = null;
+
+        try
+        {
+            var response = await HttpClient.GetAsync($"api/Validacion/validar/{Uri.EscapeDataString(QrCode)}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<ValidationResponse>(content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                ValidationStatus = result?.Message ?? "Entrada validada exitosamente";
+                IsValidated = true;
+                SuccessMessage = "✓ Entrada validada";
+                
+                // Agregar al historial
+                ValidationHistory.Insert(0, new ValidationRecord
+                {
+                    QrCode = QrCode,
+                    Success = true,
+                    Timestamp = DateTime.Now
+                });
+
+                Logger.LogInformation("Validación exitosa: {QrCode}", QrCode);
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                ValidationStatus = "Entrada no encontrada o ya validada";
+                IsValidated = false;
+                ErrorMessage = "✗ Entrada no válida";
+                
+                ValidationHistory.Insert(0, new ValidationRecord
+                {
+                    QrCode = QrCode,
+                    Success = false,
+                    Timestamp = DateTime.Now
+                });
+            }
+            else
+            {
+                ValidationStatus = "Error al validar la entrada";
+                IsValidated = false;
+                ErrorMessage = "✗ Error en la validación";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error validando QR");
+            ErrorMessage = "Error inesperado al validar";
+            IsValidated = false;
+        }
+        finally
+        {
+            IsValidating = false;
+            QrCode = "";
+        }
+    }
+
+    private record ValidationResponse(
+        bool Success,
+        string Message);
+
+    private record ValidationRecord
+    {
+        public string QrCode { get; set; } = "";
+        public bool Success { get; set; }
+        public DateTime Timestamp { get; set; }
+    }
+}

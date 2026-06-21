@@ -2,6 +2,7 @@
 @inject FirebaseAuthenticationService AuthService
 @inject NavigationManager NavManager
 @inject AuthenticationStateProvider AuthStateProvider
+@implements IAsyncDisposable
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -31,29 +32,49 @@
                         <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="equipos">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Equipos
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="estadios">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Estadios
-                    </NavLink>
-                </div>
+                
+                @if (_userRole == "Admin")
+                {
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="equipos">
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Equipos
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="estadios">
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Estadios
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="usuarios">
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Usuarios
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="metricas">
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Métricas
+                        </NavLink>
+                    </div>
+                }
+                
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="eventos">
                         <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Eventos
                     </NavLink>
                 </div>
+                
+                @if (_userRole == "Supervisor" || _userRole == "Admin")
+                {
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="qr-scanner">
+                            <span class="bi bi-qr-code-nav-menu" aria-hidden="true"></span> Escanear QR
+                        </NavLink>
+                    </div>
+                }
+                
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="usuarios">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Usuarios
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="metricas">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Métricas
+                    <NavLink class="nav-link" href="venta">
+                        <span class="bi bi-ticket-nav-menu" aria-hidden="true"></span> Comprar Entradas
                     </NavLink>
                 </div>
             </Authorized>
@@ -68,11 +89,47 @@
 
 @code {
     private bool collapseNavMenu = true;
+    private string _userRole = "General";
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    protected override void OnInitialized()
+    {
+        // Suscribirse a cambios de estado de autenticación
+        AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var roleClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role);
+        if (roleClaim != null)
+        {
+            _userRole = roleClaim.Value;
+        }
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> state)
+    {
+        _ = HandleAuthStateChanged(state);
+    }
+
+    private async Task HandleAuthStateChanged(Task<AuthenticationState> stateTask)
+    {
+        var authState = await stateTask;
+        var roleClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role);
+        _userRole = roleClaim?.Value ?? "General";
+        await InvokeAsync(StateHasChanged);
+    }
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        await Task.CompletedTask;
     }
 }

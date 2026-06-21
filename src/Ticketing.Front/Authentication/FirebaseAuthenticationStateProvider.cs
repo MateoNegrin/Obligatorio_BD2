@@ -4,10 +4,17 @@ using Ticketing.Front.Services;
 
 namespace Ticketing.Front.Authentication;
 
+public sealed record FirebaseAuthenticationState(
+    bool IsAuthenticated,
+    string? UserId,
+    string? Email,
+    string? Role);
+
 public sealed class FirebaseAuthenticationStateProvider : AuthenticationStateProvider
 {
     private readonly FirebaseAuthenticationService _authService;
     private readonly ILogger<FirebaseAuthenticationStateProvider> _logger;
+    private FirebaseAuthenticationState _currentState = new(false, null, null, null);
 
     public FirebaseAuthenticationStateProvider(
         FirebaseAuthenticationService authService,
@@ -40,10 +47,13 @@ public sealed class FirebaseAuthenticationStateProvider : AuthenticationStatePro
                     new(ClaimTypes.Email, state.Email ?? string.Empty),
                 };
 
+                if (!string.IsNullOrEmpty(state.Role))
+                    claims.Add(new(ClaimTypes.Role, state.Role));
+
                 var identity = new ClaimsIdentity(claims, "firebase");
                 var principal = new ClaimsPrincipal(identity);
 
-                _logger.LogInformation("Usuario autenticado: {UserId}", state.UserId);
+                _logger.LogInformation("Usuario autenticado: {UserId} con rol: {Role}", state.UserId, state.Role);
                 return new AuthenticationState(principal);
             }
 
@@ -56,7 +66,7 @@ public sealed class FirebaseAuthenticationStateProvider : AuthenticationStatePro
         }
     }
 
-    public void NotifyUserAuthenticated(string userId, string email)
+    public void NotifyUserAuthenticated(string userId, string email, string? role = null)
     {
         var claims = new List<Claim>
         {
@@ -64,11 +74,15 @@ public sealed class FirebaseAuthenticationStateProvider : AuthenticationStatePro
             new(ClaimTypes.Email, email),
         };
 
+        if (!string.IsNullOrEmpty(role))
+            claims.Add(new(ClaimTypes.Role, role));
+
         var identity = new ClaimsIdentity(claims, "firebase");
         var principal = new ClaimsPrincipal(identity);
 
+        _currentState = new(true, userId, email, role);
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(principal)));
-        _logger.LogInformation("Usuario autenticado notificado: {UserId}", userId);
+        _logger.LogInformation("Usuario autenticado notificado: {UserId} con rol: {Role}", userId, role);
     }
 
     public void NotifyUserLoggedOut()
@@ -76,7 +90,10 @@ public sealed class FirebaseAuthenticationStateProvider : AuthenticationStatePro
         var identity = new ClaimsIdentity();
         var principal = new ClaimsPrincipal(identity);
 
+        _currentState = new(false, null, null, null);
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(principal)));
         _logger.LogInformation("Usuario desconectado notificado");
     }
+
+    public FirebaseAuthenticationState GetCurrentState() => _currentState;
 }
