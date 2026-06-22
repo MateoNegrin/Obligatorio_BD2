@@ -18,6 +18,12 @@ public sealed class UsuariosController : ControllerBase
     public async Task<IActionResult> GetAll(CancellationToken ct)
         => Ok(await _service.GetAllAsync(ct));
 
+    // Usuarios generales (no funcionarios ni administradores). Destinatarios válidos de una transferencia.
+    [HttpGet("generales")]
+    [ProducesResponseType(typeof(IReadOnlyList<UsuarioResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetGenerales(CancellationToken ct)
+        => Ok(await _service.GetGeneralesAsync(ct));
+
     [HttpGet("{numeroDocumento}")]
     [ProducesResponseType(typeof(UsuarioResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

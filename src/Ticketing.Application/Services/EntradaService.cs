@@ -26,7 +26,12 @@ public sealed class EntradaService : IEntradaService
             e.Costo,
             e.IdSector,
             e.IdEventoDeportivo,
-            e.IdVenta)).ToList();
+            e.IdVenta,
+            e.NombreLocal,
+            e.NombreVisitante,
+            e.FechaEvento,
+            e.NombreEstadio,
+            e.NombreSector)).ToList();
     }
 
     public async Task<EntradaResponse?> GetByIdAsync(int id, CancellationToken ct = default)
@@ -41,6 +46,11 @@ public sealed class EntradaService : IEntradaService
             entrada.Costo,
             entrada.IdSector,
             entrada.IdEventoDeportivo,
-            entrada.IdVenta);
+            entrada.IdVenta,
+            entrada.NombreLocal,
+            entrada.NombreVisitante,
+            entrada.FechaEvento,
+            entrada.NombreEstadio,
+            entrada.NombreSector);
     }
 }

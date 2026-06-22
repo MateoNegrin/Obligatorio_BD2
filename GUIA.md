@@ -21,8 +21,9 @@ Front (Blazor)  ->  Api (Controller)  ->  Application (Service)  ->  Infrastruct
 - El **Repository** habla con la base por **ADO.NET/MySql.Data** y devuelve **entidades de dominio**.
 - Los **DTOs** (Contracts) son lo que entra y sale por HTTP; el **Domain** es interno.
 
-> **Status actual:** Funcionalidades de **Equipos**, **Estadios**, **Eventos**, **Usuarios**, **Entradas** y **Transferencias** están completamente implementadas
-> con CRUD completo (excepto Ventas y Métricas, excluidas del alcance). Resto de entidades lanzan `NotImplementedException`.
+> **Status actual:** **Equipos**, **Estadios**, **Eventos**, **Usuarios**, **Entradas**, **Ventas** (compra) y **Transferencias** están
+> implementadas de punta a punta (front + API), incluyendo el flujo de compra con disponibilidad por sector y la transferencia entre
+> usuarios. **Métricas** queda excluida del alcance. El resto de entidades lanzan `NotImplementedException`.
 
 ---
 
@@ -164,8 +165,12 @@ El controller ya está hecho y delega en el service. Probá el endpoint desde **
 `database/01_schema_mysql.sql` es la **fuente de verdad** de las tablas. Si vas a implementar un
 endpoint y la tabla/columna no existe, no inventes: está marcado con `// TODO` en el código
 y con bloques comentados en el `.sql`. Hay **huecos conocidos** documentados al final de
-`01_schema.sql` (dueño actual de la entrada, entidad de validación, vínculo evento→estadio,
-RBAC dinámico). Coordinar con el equipo antes de tocar el esquema.
+`01_schema.sql` (entidad de validación, vínculo evento→estadio, RBAC dinámico). Coordinar con
+el equipo antes de tocar el esquema.
+
+> El **dueño actual de una entrada** ya no es un hueco: no se persiste como columna, se calcula
+> al leer (`EntradaRepository`) tomando el receptor de la **última transferencia** y, si no hubo
+> ninguna, el comprador original de la `venta` (`COALESCE(... última transferencia ..., venta.numero_documento_usuario)`).
 
 Áreas que hoy **no** tienen tabla en el esquema (Auth, Roles, Permisos, Asignaciones,
 LogsUsuario, Paises, Localidades, Validacion, Qr): el controller y el service existen para
@@ -174,14 +179,34 @@ que aparezcan en Swagger, pero quedan en `NotImplementedException` con su `// TO
 ### Entidades ya implementadas:
 - ✅ **Equipo** — CRUD completo
 - ✅ **Estadio** (con Sector) — CRUD completo
-- ✅ **EventoDeportivo** — CRUD completo
-- ✅ **Usuario** — CRUD completo
-- ✅ **Entrada** — Lectura y marcación de consumo
-- ✅ **Transferencia** — Crear, contar e historial (máx. 3 transferencias)
+- ✅ **EventoDeportivo** — CRUD completo + sectores habilitados y disponibilidad por sector (`/sectores`, `/sectores-disponibles`)
+- ✅ **Usuario** — CRUD completo + listado de usuarios generales (`/generales`)
+- ✅ **Venta** — Compra transaccional (1-5 entradas por venta, valida disponibilidad/habilitación del sector) y compras por usuario
+- ✅ **Entrada** — Lectura por usuario (resolviendo el **dueño actual**) y por id, con datos de evento/estadio/sector
+- ✅ **Transferencia** — Crear, contar e historial (máx. 3 transferencias por entrada)
 
 ### Entidades excluidas del alcance:
-- ❌ **Ventas** — Excluida
 - ❌ **Métricas** — Excluida
+
+---
+
+## Flujo de compra y transferencia (front + API)
+
+**Compra (`Pages/Venta.razor` → `POST /api/Ventas`):**
+1. El front carga eventos (`GET /api/Eventos`) y, al elegir uno, sus sectores con disponibilidad (`GET /api/Eventos/{id}/sectores-disponibles`). Los sectores agotados se muestran deshabilitados.
+2. Se arma un `CrearVentaRequest` con un item por entrada (mismo evento/sector), entre 1 y 5.
+3. El **service** valida la cantidad y delega en el **repository**, que crea `venta` + `estado_venta` + las `entrada`s **en una sola transacción** validando disponibilidad/habilitación del sector. Precio fijo de `$100` por entrada.
+
+**Transferencia (`Pages/MisEntradas.razor` → `POST /api/Transferencias`):**
+1. Se listan las entradas del usuario (`GET /api/Entradas/usuario/{doc}`), que incluye las recibidas por transferencia (ver "dueño actual").
+2. Se elige un destinatario de la lista de usuarios generales (`GET /api/Usuarios/generales`, excluyendo al propio usuario).
+3. Antes de transferir se verifica el tope con `GET /api/Transferencias/entrada/{id}/historial` (máx. **3** por entrada).
+
+### Toasts en el front
+Las confirmaciones y errores se muestran con **toasts**, no con `alert`/excepciones a la vista:
+- `Services/ToastService.cs` — `ShowSuccess` / `ShowError` disparan un evento.
+- `Components/ToastContainer.razor` — vive en `Layout/MainLayout.razor`, se suscribe al evento y renderiza los mensajes.
+- Se inyecta con `@inject ToastService Toast` en cualquier página.
 
 ---
 

@@ -6,7 +6,8 @@ con acceso a datos en **ADO.NET puro sobre MySQL** (sin ORM) y un front mínimo 
 
 **Base de datos remota:** `mysql.reto-ucu.net:50006` (IC_Grupo3)
 
-> Status: Funcionalidades completamente implementadas para **Equipos, Estadios, Eventos, Usuarios, Entradas y Transferencias** (CRUD completo). Endpoints disponibles
+> Status: Funcionalidades completamente implementadas para **Equipos, Estadios, Eventos, Usuarios, Entradas, Ventas (compra) y Transferencias**.
+> El **flujo de compra de entradas** (con disponibilidad por sector) y la **transferencia entre usuarios** funcionan de punta a punta (front + API). Endpoints disponibles
 > en Swagger. La arquitectura sigue el patrón de 5 capas (Domain → Contracts → Application → Infrastructure → MySQL).
 >
 > Para entender cómo está organizado el código y cómo trabajar sobre él, ver **[GUIA.md](GUIA.md)**.
@@ -53,14 +54,20 @@ dotnet run --project src/Ticketing.Api
 - ✅ `POST /api/Equipos` — Crear equipo
 - ✅ `GET /api/Estadios` — Listar estadios
 - ✅ `POST /api/Estadios` — Crear estadio
-- ✅ `GET /api/Eventos` — Listar eventos deportivos
+- ✅ `GET /api/Eventos` — Listar eventos deportivos (con equipos, estadio y disponibilidad)
 - ✅ `POST /api/Eventos` — Crear evento
+- ✅ `GET /api/Eventos/{id}/sectores-disponibles` — Sectores del evento con capacidad/vendidas/disponibles
+- ✅ `GET /api/Eventos/{id}/sectores` — Sectores habilitados para el evento
+- ✅ `POST /api/Eventos/{id}/sectores` — Habilitar un sector para el evento
 - ✅ `GET /api/Usuarios` — Listar usuarios
+- ✅ `GET /api/Usuarios/generales` — Usuarios generales (destinatarios válidos de transferencia)
 - ✅ `GET /api/Usuarios/{numeroDocumento}` — Obtener usuario
 - ✅ `POST /api/Usuarios` — Crear usuario
 - ✅ `PUT /api/Usuarios/{numeroDocumento}` — Actualizar usuario
 - ✅ `DELETE /api/Usuarios/{numeroDocumento}` — Eliminar usuario
-- ✅ `GET /api/Entradas` — Listar entradas del usuario
+- ✅ `POST /api/Ventas` — Comprar entradas (1-5 por transacción, transaccional)
+- ✅ `GET /api/Ventas/usuario/{numeroDocumento}` — Compras de un usuario
+- ✅ `GET /api/Entradas/usuario/{numeroDocumento}` — Entradas del usuario (incluye las recibidas por transferencia)
 - ✅ `GET /api/Entradas/{id}` — Obtener entrada
 - ✅ `POST /api/Transferencias` — Transferir entrada
 - ✅ `POST /api/Transferencias/aceptar` — Aceptar transferencia
@@ -73,8 +80,14 @@ dotnet run --project src/Ticketing.Front
 ```
 
 Abre el Blazor WASM (la URL aparece en consola). Apunta a la API según `ApiBaseUrl` en
-`src/Ticketing.Front/wwwroot/appsettings.json`. Las páginas para Equipos, Estadios y Eventos
-funcionan correctamente y se sincronizan con la API.
+`src/Ticketing.Front/wwwroot/appsettings.json`. Las páginas funcionan y se sincronizan con la API.
+
+### Páginas del front
+
+- **Equipos, Estadios, Eventos, Usuarios** — ABM (según rol).
+- **Comprar Entradas** (`/venta`) — elegís evento → sector (mostrando entradas disponibles, los agotados quedan deshabilitados) → cantidad (1-5). Precio fijo de $100 por entrada. La compra es transaccional en el backend.
+- **Mis Entradas** (`/mis-entradas`) — lista tus entradas (compradas y recibidas por transferencia) y permite **transferirlas** a otro usuario general, validando el tope de **3 transferencias** por entrada.
+- **Toasts** — confirmaciones y errores se muestran como notificaciones (`ToastService` + `ToastContainer` en el layout), no por alertas bloqueantes.
 
 ## Estructura
 
@@ -115,9 +128,9 @@ Los roles se determinan automáticamente basados en las tablas `usuario`, `admin
 
 | Rol | Tabla | Menú Disponible |
 |-----|-------|-----------------|
-| **Admin** | `administrador.numero_documento` | Home, Eventos, Comprar Entradas, Escanear QR, Equipos, Estadios, Usuarios, Métricas |
-| **Supervisor** | `funcionario.numero_documento` | Home, Eventos, Comprar Entradas, Escanear QR |
-| **General** | Solo en `usuario` | Home, Eventos, Comprar Entradas |
+| **Admin** | `administrador.numero_documento` | Home, Eventos, Comprar Entradas, Mis Entradas, Escanear QR, Equipos, Estadios, Usuarios, Métricas |
+| **Supervisor** | `funcionario.numero_documento` | Home, Eventos, Comprar Entradas, Mis Entradas, Escanear QR |
+| **General** | Solo en `usuario` | Home, Eventos, Comprar Entradas, Mis Entradas |
 
 ### Credenciales de Prueba (Contraseña: `prueba1`)
 

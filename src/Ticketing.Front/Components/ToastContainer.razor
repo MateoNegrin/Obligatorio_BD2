@@ -1,0 +1,53 @@
+@implements IDisposable
+@inject ToastService ToastService
+
+<div class="toast-container">
+    @foreach (var toast in _toasts)
+    {
+        <div class="toast-item toast-@toast.Level.ToString().ToLower()" @key="toast.Id">
+            <span>@toast.Text</span>
+            <button class="toast-close" @onclick="() => Remove(toast)" aria-label="Cerrar">×</button>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<ToastInstance> _toasts = new();
+
+    protected override void OnInitialized() => ToastService.OnShow += HandleShow;
+
+    private void HandleShow(ToastMessage message)
+    {
+        var instance = new ToastInstance(message.Text, message.Level);
+        _toasts.Add(instance);
+        InvokeAsync(StateHasChanged);
+        _ = AutoDismissAsync(instance);
+    }
+
+    private async Task AutoDismissAsync(ToastInstance instance)
+    {
+        await Task.Delay(4000);
+        Remove(instance);
+    }
+
+    private void Remove(ToastInstance instance)
+    {
+        if (_toasts.Remove(instance))
+            InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => ToastService.OnShow -= HandleShow;
+
+    private sealed class ToastInstance
+    {
+        public Guid Id { get; } = Guid.NewGuid();
+        public string Text { get; }
+        public ToastLevel Level { get; }
+
+        public ToastInstance(string text, ToastLevel level)
+        {
+            Text = text;
+            Level = level;
+        }
+    }
+}

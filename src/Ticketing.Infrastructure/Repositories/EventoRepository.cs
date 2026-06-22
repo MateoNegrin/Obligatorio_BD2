@@ -17,24 +17,46 @@ public sealed class EventoRepository : IEventoRepository
     {
         await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(
-            "SELECT id, id_equipo_local, id_equipo_visitante, fecha, hora, cantidad_entradas FROM evento_deportivo",
+            @"SELECT
+                  e.id,
+                  e.id_equipo_local,
+                  e.id_equipo_visitante,
+                  el.nombre AS nombre_local,
+                  ev.nombre AS nombre_visitante,
+                  e.fecha,
+                  e.hora,
+                  e.cantidad_entradas,
+                  e.cantidad_entradas - (SELECT COUNT(*) FROM entrada en WHERE en.id_evento_deportivo = e.id) AS entradas_disponibles,
+                  (SELECT es.ubicacion
+                     FROM informacion_entrada ie
+                     JOIN sector s ON s.id = ie.id_sector
+                     JOIN estadio es ON es.id = s.id_estadio
+                     WHERE ie.id_evento_deportivo = e.id
+                     LIMIT 1) AS nombre_estadio
+              FROM evento_deportivo e
+              JOIN equipo el ON el.id = e.id_equipo_local
+              JOIN equipo ev ON ev.id = e.id_equipo_visitante",
             (MySqlConnection)conn);
         await using var reader = await cmd.ExecuteReaderAsync(ct);
 
         var result = new List<EventoDeportivo>();
         while (await reader.ReadAsync(ct))
         {
-            var horaValue = reader.GetValue(4);
+            var horaValue = reader.GetValue(6);
             var hora = horaValue is TimeSpan ts ? TimeOnly.FromTimeSpan(ts) : TimeOnly.Parse(horaValue.ToString()!);
-            
+
             result.Add(new EventoDeportivo
             {
                 Id = reader.GetInt32(0),
                 IdEquipoLocal = reader.GetInt32(1),
                 IdEquipoVisitante = reader.GetInt32(2),
-                Fecha = DateOnly.FromDateTime(reader.GetDateTime(3)),
+                NombreLocal = reader.GetString(3),
+                NombreVisitante = reader.GetString(4),
+                Fecha = DateOnly.FromDateTime(reader.GetDateTime(5)),
                 Hora = hora,
-                CantidadEntradas = reader.GetInt32(5)
+                CantidadEntradas = reader.GetInt32(7),
+                EntradasDisponibles = reader.GetInt32(8),
+                NombreEstadio = reader.IsDBNull(9) ? string.Empty : reader.GetString(9)
             });
         }
 
@@ -45,7 +67,26 @@ public sealed class EventoRepository : IEventoRepository
     {
         await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(
-            "SELECT id, id_equipo_local, id_equipo_visitante, fecha, hora, cantidad_entradas FROM evento_deportivo WHERE id = @id",
+            @"SELECT
+                  e.id,
+                  e.id_equipo_local,
+                  e.id_equipo_visitante,
+                  el.nombre AS nombre_local,
+                  ev.nombre AS nombre_visitante,
+                  e.fecha,
+                  e.hora,
+                  e.cantidad_entradas,
+                  e.cantidad_entradas - (SELECT COUNT(*) FROM entrada en WHERE en.id_evento_deportivo = e.id) AS entradas_disponibles,
+                  (SELECT es.ubicacion
+                     FROM informacion_entrada ie
+                     JOIN sector s ON s.id = ie.id_sector
+                     JOIN estadio es ON es.id = s.id_estadio
+                     WHERE ie.id_evento_deportivo = e.id
+                     LIMIT 1) AS nombre_estadio
+              FROM evento_deportivo e
+              JOIN equipo el ON el.id = e.id_equipo_local
+              JOIN equipo ev ON ev.id = e.id_equipo_visitante
+              WHERE e.id = @id",
             (MySqlConnection)conn);
         cmd.Parameters.AddWithValue("@id", id);
         await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -53,7 +94,7 @@ public sealed class EventoRepository : IEventoRepository
         if (!await reader.ReadAsync(ct))
             return null;
 
-        var horaValue = reader.GetValue(4);
+        var horaValue = reader.GetValue(6);
         var hora = horaValue is TimeSpan ts ? TimeOnly.FromTimeSpan(ts) : TimeOnly.Parse(horaValue.ToString()!);
 
         return new EventoDeportivo
@@ -61,9 +102,13 @@ public sealed class EventoRepository : IEventoRepository
             Id = reader.GetInt32(0),
             IdEquipoLocal = reader.GetInt32(1),
             IdEquipoVisitante = reader.GetInt32(2),
-            Fecha = DateOnly.FromDateTime(reader.GetDateTime(3)),
+            NombreLocal = reader.GetString(3),
+            NombreVisitante = reader.GetString(4),
+            Fecha = DateOnly.FromDateTime(reader.GetDateTime(5)),
             Hora = hora,
-            CantidadEntradas = reader.GetInt32(5)
+            CantidadEntradas = reader.GetInt32(7),
+            EntradasDisponibles = reader.GetInt32(8),
+            NombreEstadio = reader.IsDBNull(9) ? string.Empty : reader.GetString(9)
         };
     }
 
@@ -136,6 +181,40 @@ public sealed class EventoRepository : IEventoRepository
                 IdSector = reader.GetInt32(0),
                 IdEventoDeportivo = reader.GetInt32(1),
                 NumeroDocumentoAdministrador = reader.GetString(2)
+            });
+        }
+
+        return result;
+    }
+
+    public async Task<IReadOnlyList<SectorDisponibilidad>> GetSectoresDisponiblesAsync(int idEvento, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(
+            @"SELECT
+                  s.id,
+                  s.nombre,
+                  s.capacidad,
+                  (SELECT COUNT(*) FROM entrada en
+                     WHERE en.id_evento_deportivo = ie.id_evento_deportivo
+                       AND en.id_sector = s.id) AS vendidas
+              FROM informacion_entrada ie
+              JOIN sector s ON s.id = ie.id_sector
+              WHERE ie.id_evento_deportivo = @id_evento
+              ORDER BY s.nombre",
+            (MySqlConnection)conn);
+        cmd.Parameters.AddWithValue("@id_evento", idEvento);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+
+        var result = new List<SectorDisponibilidad>();
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(new SectorDisponibilidad
+            {
+                IdSector = reader.GetInt32(0),
+                Nombre = reader.GetString(1),
+                Capacidad = reader.GetInt32(2),
+                EntradasVendidas = reader.GetInt32(3)
             });
         }
 

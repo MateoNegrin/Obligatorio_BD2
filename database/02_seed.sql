@@ -69,7 +69,6 @@ INSERT INTO sector (id_estadio, nombre, capacidad) VALUES
 
 -- Usuarios generales (compradores de entradas)
 INSERT INTO usuario (numero_documento, mail, pais, localidad, calle, numero_direccion, codigo_postal) VALUES
-    ('12345678', 'juan.perez@email.com', 'Uruguay', 'Montevideo', 'Calle 18 de Julio', '1234', '11000'),
     ('87654321', 'maria.garcia@email.com', 'Uruguay', 'Canelones', 'Avenida Italia', '5678', '91500'),
     ('11223344', 'carlos.rodriguez@email.com', 'Argentina', 'Buenos Aires', 'Avenida 9 de Julio', '2000', 'C1043'),
     ('44332211', 'ana.martinez@email.com', 'Argentina', 'Córdoba', 'Calle Rivadavia', '1500', 'X5000'),
@@ -89,6 +88,12 @@ INSERT INTO usuario (numero_documento, mail, pais, localidad, calle, numero_dire
     ('ADM001', 'admin.montevideo@ticketing.com', 'Uruguay', 'Montevideo', 'Calle Sarandí', '670', '11000'),
     ('ADM002', 'admin.buenos.aires@ticketing.com', 'Argentina', 'Buenos Aires', 'Calle Florida', '100', 'C1005'),
     ('ADM003', 'admin.sao.paulo@ticketing.com', 'Brasil', 'São Paulo', 'Avenida Ipiranga', '200', '01046-010');
+
+-- Cuentas de prueba para autenticación (Firebase): general, funcionario (supervisor) y administrador
+INSERT INTO usuario (numero_documento, mail, pais, localidad, calle, numero_direccion, codigo_postal, fecha_registro) VALUES
+    ('12345678', 'test@email.com',       'Uruguay', 'Montevideo', '24',          '222', '11800', '2026-06-20 20:21:50'),
+    ('11111111', 'supervisor@email.com', 'Uruguay', 'Montevideo', '18 de julio', '122', '11000', '2026-06-21 00:25:47'),
+    ('22222222', 'admin@email.com',      'Uruguay', 'Montevideo', '19 de abril', '102', '11000', '2026-06-21 00:27:38');
 
 -- Documentos de identidad
 INSERT INTO documento (usuario_numero_documento, tipo, pais) VALUES
@@ -136,7 +141,8 @@ INSERT INTO tiene_estado_identidad (usuario_numero_documento, id_estado_identida
 INSERT INTO funcionario (numero_documento, numero_legajo) VALUES
     ('F0001234', 'LEG-001'),
     ('F0005678', 'LEG-002'),
-    ('F0009012', 'LEG-003');
+    ('F0009012', 'LEG-003'),
+    ('11111111', 'LEG-004');
 
 -- Dispositivos autorizados (lectores de QR, etc.)
 INSERT INTO dispositivo_autorizado (nombre, numero_documento) VALUES
@@ -149,7 +155,8 @@ INSERT INTO dispositivo_autorizado (nombre, numero_documento) VALUES
 INSERT INTO administrador (numero_documento, nombre_sede) VALUES
     ('ADM001', 'Montevideo'),
     ('ADM002', 'Buenos Aires'),
-    ('ADM003', 'São Paulo');
+    ('ADM003', 'São Paulo'),
+    ('22222222', 'Montevideo');
 
 -- ---------------------------------------------------------------------------
 -- EVENTOS DEPORTIVOS

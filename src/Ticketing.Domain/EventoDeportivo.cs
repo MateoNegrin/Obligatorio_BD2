@@ -8,4 +8,10 @@ public sealed class EventoDeportivo
     public DateOnly Fecha { get; set; }
     public TimeOnly Hora { get; set; }
     public int CantidadEntradas { get; set; }
+
+    // Campos derivados (no se persisten): provienen de JOINs / subconsultas en la query.
+    public string NombreLocal { get; set; } = string.Empty;
+    public string NombreVisitante { get; set; } = string.Empty;
+    public string NombreEstadio { get; set; } = string.Empty;
+    public int EntradasDisponibles { get; set; }
 }

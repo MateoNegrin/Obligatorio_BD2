@@ -13,6 +13,7 @@ public interface IEventoService
     Task DeleteAsync(int id, CancellationToken ct = default);
 
     Task<IReadOnlyList<SectorHabilitadoResponse>> GetSectoresHabilitadosAsync(int idEvento, CancellationToken ct = default);
+    Task<IReadOnlyList<SectorDisponibleResponse>> GetSectoresDisponiblesAsync(int idEvento, CancellationToken ct = default);
     Task HabilitarSectorAsync(int idEvento, HabilitarSectorRequest request, CancellationToken ct = default);
 }
 
@@ -29,9 +30,13 @@ public sealed class EventoService : IEventoService
             e.Id,
             e.IdEquipoLocal,
             e.IdEquipoVisitante,
+            e.NombreLocal,
+            e.NombreVisitante,
+            e.NombreEstadio,
             e.Fecha,
             e.Hora,
-            e.CantidadEntradas
+            e.CantidadEntradas,
+            e.EntradasDisponibles
         )).ToList();
     }
 
@@ -45,9 +50,13 @@ public sealed class EventoService : IEventoService
             evento.Id,
             evento.IdEquipoLocal,
             evento.IdEquipoVisitante,
+            evento.NombreLocal,
+            evento.NombreVisitante,
+            evento.NombreEstadio,
             evento.Fecha,
             evento.Hora,
-            evento.CantidadEntradas
+            evento.CantidadEntradas,
+            evento.EntradasDisponibles
         );
     }
 
@@ -90,6 +99,18 @@ public sealed class EventoService : IEventoService
             s.IdSector,
             s.IdEventoDeportivo,
             s.NumeroDocumentoAdministrador
+        )).ToList();
+    }
+
+    public async Task<IReadOnlyList<SectorDisponibleResponse>> GetSectoresDisponiblesAsync(int idEvento, CancellationToken ct = default)
+    {
+        var sectores = await _repository.GetSectoresDisponiblesAsync(idEvento, ct);
+        return sectores.Select(s => new SectorDisponibleResponse(
+            s.IdSector,
+            s.Nombre,
+            s.Capacidad,
+            s.EntradasVendidas,
+            s.EntradasDisponibles
         )).ToList();
     }
 
