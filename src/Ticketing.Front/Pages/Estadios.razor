@@ -2,6 +2,8 @@
 @using Ticketing.Contracts.Estadios
 @using Ticketing.Front.ApiClients
 @inject EstadiosApiClient Client
+@inject FirebaseAuthenticationService AuthService
+@inject ToastService Toast
 
 <PageTitle>Estadios</PageTitle>
 
@@ -15,36 +17,226 @@ else if (_estadios is null)
 {
     <p>Cargando...</p>
 }
-else if (_estadios.Count == 0)
-{
-    <p>No hay estadios.</p>
-}
 else
 {
     <table class="table">
-        <thead><tr><th>Id</th><th>Sede</th><th>Capacidad</th><th>Ubicación</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Sede</th>
+                <th>Capacidad</th>
+                <th>Ubicación</th>
+                @if (_esAdmin)
+                {
+                    <th class="text-end">Acciones</th>
+                }
+            </tr>
+        </thead>
         <tbody>
         @foreach (var e in _estadios)
         {
-            <tr><td>@e.Id</td><td>@e.NombreSede</td><td>@e.CapacidadMaxima</td><td>@e.Ubicacion</td></tr>
+            <tr>
+                <td>@e.Id</td>
+                <td>@e.NombreSede</td>
+                <td>@e.CapacidadMaxima</td>
+                <td>@e.Ubicacion</td>
+                @if (_esAdmin)
+                {
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => AbrirEditar(e)">Editar</button>
+                    </td>
+                }
+            </tr>
+        }
+        @if (_esAdmin)
+        {
+            <tr>
+                <td colspan="5" class="text-center">
+                    <button class="btn btn-sm btn-success" @onclick="AbrirCrear">+ Nuevo estadio</button>
+                </td>
+            </tr>
         }
         </tbody>
     </table>
 }
 
+@if (_showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editId is null ? "Nuevo estadio" : "Editar estadio")</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_editId is null)
+                    {
+                        <p class="text-muted">El estadio se crea en tu sede asignada con 4 sectores. La capacidad se calcula sumando las capacidades de los sectores.</p>
+                    }
+                    else
+                    {
+                        <p class="text-muted">La sede no se modifica. La capacidad se recalcula a partir de los sectores.</p>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">Ubicación</label>
+                        <input class="form-control" @bind="_ubicacion" />
+                    </div>
+
+                    <label class="form-label">Sectores</label>
+                    @foreach (var s in _sectores)
+                    {
+                        <div class="row g-2 mb-2">
+                            <div class="col-7">
+                                <input class="form-control" placeholder="Nombre" @bind="s.Nombre" />
+                            </div>
+                            <div class="col-5">
+                                <input type="number" min="1" class="form-control" placeholder="Capacidad" @bind="s.Capacidad" />
+                            </div>
+                        </div>
+                    }
+                    <p class="text-muted mb-0">Capacidad total: <strong>@_sectores.Sum(s => s.Capacidad)</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CerrarModal" disabled="@_saving">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="Guardar" disabled="@_saving">
+                        @(_saving ? "Guardando..." : "Guardar")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private IReadOnlyList<EstadioResponse>? _estadios;
     private string? _error;
+    private bool _esAdmin;
+    private string? _miDocumento;
+
+    private bool _showModal;
+    private bool _saving;
+    private int? _editId;
+    private string _ubicacion = "";
+    private List<SectorEdit> _sectores = new();
 
     protected override async Task OnInitializedAsync()
+    {
+        var role = await AuthService.GetUserRoleAsync();
+        _esAdmin = role?.Role == "Admin";
+        _miDocumento = role?.NumeroDocumento;
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
     {
         try
         {
             _estadios = await Client.GetAllAsync();
+            _error = null;
         }
         catch (Exception ex)
         {
             _error = $"Error llamando a la API: {ex.Message}";
         }
+    }
+
+    private void AbrirCrear()
+    {
+        _editId = null;
+        _ubicacion = "";
+        _sectores = new()
+        {
+            new SectorEdit { Nombre = "A" },
+            new SectorEdit { Nombre = "B" },
+            new SectorEdit { Nombre = "C" },
+            new SectorEdit { Nombre = "D" },
+        };
+        _showModal = true;
+    }
+
+    private async Task AbrirEditar(EstadioResponse estadio)
+    {
+        _editId = estadio.Id;
+        _ubicacion = estadio.Ubicacion;
+        try
+        {
+            var sectores = await Client.GetSectoresAsync(estadio.Id);
+            _sectores = sectores
+                .Select(s => new SectorEdit { Id = s.Id, Nombre = s.Nombre, Capacidad = s.Capacidad })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"No se pudieron cargar los sectores: {ex.Message}");
+            return;
+        }
+        _showModal = true;
+    }
+
+    private void CerrarModal() => _showModal = false;
+
+    private async Task Guardar()
+    {
+        if (_sectores.Any(s => string.IsNullOrWhiteSpace(s.Nombre) || s.Capacidad <= 0))
+        {
+            Toast.ShowError("Cada sector debe tener nombre y capacidad mayor a cero.");
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            HttpResponseMessage response;
+            if (_editId is null)
+            {
+                if (string.IsNullOrEmpty(_miDocumento))
+                {
+                    Toast.ShowError("No se pudo identificar tu usuario administrador.");
+                    return;
+                }
+
+                var request = new CrearEstadioRequest(
+                    _miDocumento,
+                    _ubicacion,
+                    _sectores.Select(s => new SectorInput(s.Nombre, s.Capacidad)).ToList());
+                response = await Client.CreateAsync(request);
+            }
+            else
+            {
+                var request = new ActualizarEstadioRequest(
+                    _ubicacion,
+                    _sectores.Select(s => new SectorUpdate(s.Id, s.Nombre, s.Capacidad)).ToList());
+                response = await Client.UpdateAsync(_editId.Value, request);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                Toast.ShowSuccess(_editId is null ? "Estadio creado." : "Estadio actualizado.");
+                _showModal = false;
+                await CargarAsync();
+            }
+            else
+            {
+                var detalle = await response.Content.ReadAsStringAsync();
+                Toast.ShowError($"Error al guardar: {detalle}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error inesperado: {ex.Message}");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private sealed class SectorEdit
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; } = "";
+        public int Capacidad { get; set; }
     }
 }

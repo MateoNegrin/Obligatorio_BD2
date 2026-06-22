@@ -134,12 +134,11 @@ public sealed class EventoRepository : IEventoRepository
     {
         await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(
-            @"UPDATE evento_deportivo 
-              SET id_equipo_local = @id_equipo_local, 
-                  id_equipo_visitante = @id_equipo_visitante, 
-                  fecha = @fecha, 
-                  hora = @hora, 
-                  cantidad_entradas = @cantidad_entradas 
+            @"UPDATE evento_deportivo
+              SET id_equipo_local = @id_equipo_local,
+                  id_equipo_visitante = @id_equipo_visitante,
+                  fecha = @fecha,
+                  hora = @hora
               WHERE id = @id",
             (MySqlConnection)conn);
 
@@ -148,9 +147,80 @@ public sealed class EventoRepository : IEventoRepository
         cmd.Parameters.AddWithValue("@id_equipo_visitante", evento.IdEquipoVisitante);
         cmd.Parameters.AddWithValue("@fecha", evento.Fecha.ToDateTime(TimeOnly.MinValue));
         cmd.Parameters.AddWithValue("@hora", evento.Hora.ToTimeSpan());
-        cmd.Parameters.AddWithValue("@cantidad_entradas", evento.CantidadEntradas);
 
         await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task<int> CreateConSectoresAsync(EventoDeportivo evento, IReadOnlyList<int> idSectores, string numeroDocumentoAdministrador, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        var mysqlConn = (MySqlConnection)conn;
+        await using var transaction = await mysqlConn.BeginTransactionAsync(ct);
+
+        try
+        {
+            await using var cmdEvento = new MySqlCommand(
+                @"INSERT INTO evento_deportivo (id_equipo_local, id_equipo_visitante, fecha, hora, cantidad_entradas)
+                  VALUES (@id_equipo_local, @id_equipo_visitante, @fecha, @hora, @cantidad_entradas);
+                  SELECT LAST_INSERT_ID();",
+                mysqlConn, transaction);
+            cmdEvento.Parameters.AddWithValue("@id_equipo_local", evento.IdEquipoLocal);
+            cmdEvento.Parameters.AddWithValue("@id_equipo_visitante", evento.IdEquipoVisitante);
+            cmdEvento.Parameters.AddWithValue("@fecha", evento.Fecha.ToDateTime(TimeOnly.MinValue));
+            cmdEvento.Parameters.AddWithValue("@hora", evento.Hora.ToTimeSpan());
+            cmdEvento.Parameters.AddWithValue("@cantidad_entradas", evento.CantidadEntradas);
+            var idEvento = (int)(ulong)await cmdEvento.ExecuteScalarAsync(ct);
+
+            foreach (var idSector in idSectores)
+            {
+                await using var cmdInfo = new MySqlCommand(
+                    @"INSERT INTO informacion_entrada (id_sector, id_evento_deportivo, numero_documento_administrador)
+                      VALUES (@id_sector, @id_evento_deportivo, @numero_documento_administrador)",
+                    mysqlConn, transaction);
+                cmdInfo.Parameters.AddWithValue("@id_sector", idSector);
+                cmdInfo.Parameters.AddWithValue("@id_evento_deportivo", idEvento);
+                cmdInfo.Parameters.AddWithValue("@numero_documento_administrador", numeroDocumentoAdministrador);
+                await cmdInfo.ExecuteNonQueryAsync(ct);
+            }
+
+            await transaction.CommitAsync(ct);
+            return idEvento;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    public async Task<IReadOnlyList<SectorConSede>> GetSectoresConSedeAsync(IReadOnlyList<int> idSectores, CancellationToken ct = default)
+    {
+        if (idSectores.Count == 0)
+            return [];
+
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+
+        var parametros = idSectores.Select((_, i) => $"@id{i}").ToArray();
+        await using var cmd = new MySqlCommand(
+            $@"SELECT s.id, s.capacidad, s.id_estadio, es.nombre_sede
+               FROM sector s
+               JOIN estadio es ON es.id = s.id_estadio
+               WHERE s.id IN ({string.Join(", ", parametros)})",
+            (MySqlConnection)conn);
+        for (var i = 0; i < idSectores.Count; i++)
+            cmd.Parameters.AddWithValue(parametros[i], idSectores[i]);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var result = new List<SectorConSede>();
+        while (await reader.ReadAsync(ct))
+            result.Add(new SectorConSede
+            {
+                IdSector = reader.GetInt32(0),
+                Capacidad = reader.GetInt32(1),
+                IdEstadio = reader.GetInt32(2),
+                NombreSede = reader.GetString(3)
+            });
+        return result;
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)

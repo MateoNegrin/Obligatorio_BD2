@@ -164,6 +164,17 @@ public sealed class UsuarioRepository : IUsuarioRepository
         return "General";
     }
 
+    public async Task<string?> GetSedeAdministradorAsync(string numeroDocumento, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(
+            "SELECT nombre_sede FROM administrador WHERE numero_documento = @numero_documento",
+            (MySqlConnection)conn);
+        cmd.Parameters.AddWithValue("@numero_documento", numeroDocumento);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is null or DBNull ? null : (string)result;
+    }
+
     public async Task<(string NumeroDocumento, string? Role)> GetUserRoleByEmailAsync(string email, CancellationToken ct = default)
     {
         await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);

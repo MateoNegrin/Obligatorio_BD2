@@ -17,4 +17,7 @@ public sealed class EquiposApiClient
 
     public async Task<HttpResponseMessage> CreateAsync(CrearEquipoRequest request, CancellationToken ct = default)
         => await _http.PostAsJsonAsync("api/Equipos", request, ct);
+
+    public async Task<HttpResponseMessage> UpdateAsync(int id, ActualizarEquipoRequest request, CancellationToken ct = default)
+        => await _http.PutAsJsonAsync($"api/Equipos/{id}", request, ct);
 }

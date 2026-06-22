@@ -20,8 +20,13 @@ public interface IEventoService
 public sealed class EventoService : IEventoService
 {
     private readonly IEventoRepository _repository;
+    private readonly IUsuarioRepository _usuarios;
 
-    public EventoService(IEventoRepository repository) => _repository = repository;
+    public EventoService(IEventoRepository repository, IUsuarioRepository usuarios)
+    {
+        _repository = repository;
+        _usuarios = usuarios;
+    }
 
     public async Task<IReadOnlyList<EventoResponse>> GetAllAsync(CancellationToken ct = default)
     {
@@ -62,28 +67,46 @@ public sealed class EventoService : IEventoService
 
     public async Task<int> CreateAsync(CrearEventoRequest request, CancellationToken ct = default)
     {
+        var idSectores = request.IdSectoresHabilitados?.Distinct().ToList() ?? [];
+        if (idSectores.Count == 0)
+            throw new InvalidOperationException("Debe habilitar al menos un sector.");
+
+        // El evento solo puede crearse en un estadio de la sede del administrador.
+        var sede = await _usuarios.GetSedeAdministradorAsync(request.NumeroDocumentoAdministrador, ct)
+            ?? throw new InvalidOperationException("El usuario indicado no es un administrador válido.");
+
+        var sectores = await _repository.GetSectoresConSedeAsync(idSectores, ct);
+        if (sectores.Count != idSectores.Count)
+            throw new InvalidOperationException("Alguno de los sectores indicados no existe.");
+        if (sectores.Select(s => s.IdEstadio).Distinct().Count() > 1)
+            throw new InvalidOperationException("Los sectores habilitados deben pertenecer al mismo estadio.");
+        if (sectores.Any(s => s.NombreSede != sede))
+            throw new InvalidOperationException("Solo puede crear eventos en estadios de su sede.");
+
         var evento = new EventoDeportivo
         {
             IdEquipoLocal = request.IdEquipoLocal,
             IdEquipoVisitante = request.IdEquipoVisitante,
             Fecha = request.Fecha,
             Hora = request.Hora,
-            CantidadEntradas = request.CantidadEntradas
+            // Las entradas disponibles son la suma de las capacidades de los sectores habilitados.
+            CantidadEntradas = sectores.Sum(s => s.Capacidad)
         };
 
-        return await _repository.CreateAsync(evento, ct);
+        return await _repository.CreateConSectoresAsync(evento, idSectores, request.NumeroDocumentoAdministrador, ct);
     }
 
     public async Task UpdateAsync(int id, ActualizarEventoRequest request, CancellationToken ct = default)
     {
+        // Solo se modifican datos básicos: los sectores habilitados no se tocan para no
+        // afectar entradas ya vendidas.
         var evento = new EventoDeportivo
         {
             Id = id,
             IdEquipoLocal = request.IdEquipoLocal,
             IdEquipoVisitante = request.IdEquipoVisitante,
             Fecha = request.Fecha,
-            Hora = request.Hora,
-            CantidadEntradas = request.CantidadEntradas
+            Hora = request.Hora
         };
 
         await _repository.UpdateAsync(evento, ct);

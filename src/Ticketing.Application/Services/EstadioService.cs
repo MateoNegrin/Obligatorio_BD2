@@ -19,8 +19,13 @@ public interface IEstadioService
 public sealed class EstadioService : IEstadioService
 {
     private readonly IEstadioRepository _repository;
+    private readonly IUsuarioRepository _usuarios;
 
-    public EstadioService(IEstadioRepository repository) => _repository = repository;
+    public EstadioService(IEstadioRepository repository, IUsuarioRepository usuarios)
+    {
+        _repository = repository;
+        _usuarios = usuarios;
+    }
 
     public async Task<IReadOnlyList<EstadioResponse>> GetAllAsync(CancellationToken ct = default)
     {
@@ -36,25 +41,46 @@ public sealed class EstadioService : IEstadioService
 
     public async Task<int> CreateAsync(CrearEstadioRequest request, CancellationToken ct = default)
     {
+        if (request.Sectores is null || request.Sectores.Count != 4)
+            throw new InvalidOperationException("El estadio debe crearse con exactamente 4 sectores.");
+        if (request.Sectores.Any(s => string.IsNullOrWhiteSpace(s.Nombre) || s.Capacidad <= 0))
+            throw new InvalidOperationException("Cada sector debe tener un nombre y una capacidad mayor a cero.");
+
+        // La sede del estadio es la sede asignada al administrador; no se puede crear en otra.
+        var sede = await _usuarios.GetSedeAdministradorAsync(request.NumeroDocumentoAdministrador, ct)
+            ?? throw new InvalidOperationException("El usuario indicado no es un administrador válido.");
+
         var estadio = new Estadio
         {
-            NombreSede = request.NombreSede,
-            CapacidadMaxima = request.CapacidadMaxima,
+            NombreSede = sede,
+            CapacidadMaxima = request.Sectores.Sum(s => s.Capacidad),
             Ubicacion = request.Ubicacion
         };
-        return await _repository.CreateAsync(estadio, ct);
+        var sectores = request.Sectores
+            .Select(s => new Sector { Nombre = s.Nombre, Capacidad = s.Capacidad })
+            .ToList();
+
+        return await _repository.CreateConSectoresAsync(estadio, sectores, ct);
     }
 
     public async Task UpdateAsync(int id, ActualizarEstadioRequest request, CancellationToken ct = default)
     {
+        if (request.Sectores is null || request.Sectores.Count == 0)
+            throw new InvalidOperationException("Debe indicar los sectores del estadio.");
+        if (request.Sectores.Any(s => string.IsNullOrWhiteSpace(s.Nombre) || s.Capacidad <= 0))
+            throw new InvalidOperationException("Cada sector debe tener un nombre y una capacidad mayor a cero.");
+
         var estadio = new Estadio
         {
             Id = id,
-            NombreSede = request.NombreSede,
-            CapacidadMaxima = request.CapacidadMaxima,
+            CapacidadMaxima = request.Sectores.Sum(s => s.Capacidad),
             Ubicacion = request.Ubicacion
         };
-        await _repository.UpdateAsync(estadio, ct);
+        var sectores = request.Sectores
+            .Select(s => new Sector { Id = s.Id, IdEstadio = id, Nombre = s.Nombre, Capacidad = s.Capacidad })
+            .ToList();
+
+        await _repository.UpdateConSectoresAsync(estadio, sectores, ct);
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)

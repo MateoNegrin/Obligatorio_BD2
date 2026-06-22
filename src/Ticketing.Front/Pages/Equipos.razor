@@ -2,6 +2,8 @@
 @using Ticketing.Contracts.Equipos
 @using Ticketing.Front.ApiClients
 @inject EquiposApiClient Client
+@inject FirebaseAuthenticationService AuthService
+@inject ToastService Toast
 
 <PageTitle>Equipos</PageTitle>
 
@@ -15,37 +17,149 @@ else if (_equipos is null)
 {
     <p>Cargando...</p>
 }
-else if (_equipos.Count == 0)
-{
-    <p>No hay equipos.</p>
-}
 else
 {
     <table class="table">
-        <thead><tr><th>Id</th><th>Nombre</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Nombre</th>
+                @if (_esAdmin)
+                {
+                    <th class="text-end">Acciones</th>
+                }
+            </tr>
+        </thead>
         <tbody>
         @foreach (var e in _equipos)
         {
-            <tr><td>@e.Id</td><td>@e.Nombre</td></tr>
+            <tr>
+                <td>@e.Id</td>
+                <td>@e.Nombre</td>
+                @if (_esAdmin)
+                {
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => AbrirEditar(e)">Editar</button>
+                    </td>
+                }
+            </tr>
+        }
+        @if (_esAdmin)
+        {
+            <tr>
+                <td colspan="3" class="text-center">
+                    <button class="btn btn-sm btn-success" @onclick="AbrirCrear">+ Nuevo equipo</button>
+                </td>
+            </tr>
         }
         </tbody>
     </table>
 }
 
+@if (_showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editId is null ? "Nuevo equipo" : "Editar equipo")</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Nombre</label>
+                    <input class="form-control" @bind="_nombre" />
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CerrarModal" disabled="@_saving">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="Guardar" disabled="@_saving">
+                        @(_saving ? "Guardando..." : "Guardar")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private IReadOnlyList<EquipoResponse>? _equipos;
     private string? _error;
+    private bool _esAdmin;
+
+    private bool _showModal;
+    private bool _saving;
+    private int? _editId;
+    private string _nombre = "";
 
     protected override async Task OnInitializedAsync()
+    {
+        var role = await AuthService.GetUserRoleAsync();
+        _esAdmin = role?.Role == "Admin";
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
     {
         try
         {
             _equipos = await Client.GetAllAsync();
+            _error = null;
         }
         catch (Exception ex)
         {
-            // Esperado mientras el backend no esté implementado (NotImplementedException => 500).
             _error = $"Error llamando a la API: {ex.Message}";
+        }
+    }
+
+    private void AbrirCrear()
+    {
+        _editId = null;
+        _nombre = "";
+        _showModal = true;
+    }
+
+    private void AbrirEditar(EquipoResponse equipo)
+    {
+        _editId = equipo.Id;
+        _nombre = equipo.Nombre;
+        _showModal = true;
+    }
+
+    private void CerrarModal() => _showModal = false;
+
+    private async Task Guardar()
+    {
+        if (string.IsNullOrWhiteSpace(_nombre))
+        {
+            Toast.ShowError("El nombre es obligatorio.");
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var response = _editId is null
+                ? await Client.CreateAsync(new CrearEquipoRequest(_nombre))
+                : await Client.UpdateAsync(_editId.Value, new ActualizarEquipoRequest(_nombre));
+
+            if (response.IsSuccessStatusCode)
+            {
+                Toast.ShowSuccess(_editId is null ? "Equipo creado." : "Equipo actualizado.");
+                _showModal = false;
+                await CargarAsync();
+            }
+            else
+            {
+                var detalle = await response.Content.ReadAsStringAsync();
+                Toast.ShowError($"Error al guardar: {detalle}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error inesperado: {ex.Message}");
+        }
+        finally
+        {
+            _saving = false;
         }
     }
 }
