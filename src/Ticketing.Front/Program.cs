@@ -27,6 +27,11 @@ builder.Services.AddScoped<EstadiosApiClient>();
 builder.Services.AddScoped<EventosApiClient>();
 builder.Services.AddScoped<UsuariosApiClient>();
 builder.Services.AddScoped<MetricasApiClient>();
+builder.Services.AddScoped<EntradasApiClient>();
+builder.Services.AddScoped<TransferenciasApiClient>();
+
+// Toasts (notificaciones flotantes)
+builder.Services.AddScoped<ToastService>();
 
 // Firebase Authentication
 builder.Services.AddScoped<FirebaseAuthenticationService>();

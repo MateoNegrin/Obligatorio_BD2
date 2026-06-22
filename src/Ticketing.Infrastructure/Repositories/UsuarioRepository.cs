@@ -38,6 +38,38 @@ public sealed class UsuarioRepository : IUsuarioRepository
         return result;
     }
 
+    public async Task<IReadOnlyList<Usuario>> GetGeneralesAsync(CancellationToken ct = default)
+    {
+        // Usuarios generales: los que no están en administrador ni en funcionario.
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(
+            @"SELECT u.numero_documento, u.mail, u.pais, u.localidad, u.calle, u.numero_direccion, u.codigo_postal, u.fecha_registro
+              FROM usuario u
+              LEFT JOIN administrador a ON a.numero_documento = u.numero_documento
+              LEFT JOIN funcionario f ON f.numero_documento = u.numero_documento
+              WHERE a.numero_documento IS NULL AND f.numero_documento IS NULL
+              ORDER BY u.mail",
+            (MySqlConnection)conn);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+
+        var result = new List<Usuario>();
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(new Usuario
+            {
+                NumeroDocumento = reader.GetString(0),
+                Mail = reader.GetString(1),
+                Pais = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                Localidad = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                Calle = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                NumeroDireccion = reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
+                CodigoPostal = reader.IsDBNull(6) ? string.Empty : reader.GetString(6),
+                FechaRegistro = reader.GetDateTime(7)
+            });
+        }
+        return result;
+    }
+
     public async Task<Usuario?> GetByDocumentoAsync(string numeroDocumento, CancellationToken ct = default)
     {
         await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);

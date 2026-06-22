@@ -1,9 +1,12 @@
 @page "/venta"
 @using System.Net.Http.Json
+@using Ticketing.Front.Services
 
 @inject HttpClient HttpClient
 @inject ILogger<Venta> Logger
 @inject NavigationManager NavManager
+@inject FirebaseAuthenticationService AuthService
+@inject ToastService Toast
 
 <div class="container mt-5">
     <div class="row justify-content-center">
@@ -11,22 +14,6 @@
             <div class="card shadow-lg">
                 <div class="card-body p-5">
                     <h1 class="card-title mb-4">Comprar Entradas</h1>
-
-                    @if (!string.IsNullOrEmpty(ErrorMessage))
-                    {
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            @ErrorMessage
-                            <button type="button" class="btn-close" @onclick="@(() => ErrorMessage = null)"></button>
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrEmpty(SuccessMessage))
-                    {
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            @SuccessMessage
-                            <button type="button" class="btn-close" @onclick="@(() => SuccessMessage = null)"></button>
-                        </div>
-                    }
 
                     <form @onsubmit="HandleCompra">
                         <div class="mb-3">
@@ -128,14 +115,17 @@
     private SectorDto? SelectedSector =>
         Sectores.FirstOrDefault(s => s.IdSector.ToString() == SelectedSectorId);
     private int Cantidad = 1;
-    private string? ErrorMessage;
-    private string? SuccessMessage;
+    private string? MiDocumento;
     private bool IsLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            // Documento del comprador autenticado
+            var role = await AuthService.GetUserRoleAsync();
+            MiDocumento = role?.NumeroDocumento;
+
             // Cargar eventos
             var response = await HttpClient.GetAsync("api/Eventos");
             if (response.IsSuccessStatusCode)
@@ -146,13 +136,13 @@
             }
             else
             {
-                ErrorMessage = "Error al cargar eventos";
+                Toast.ShowError("Error al cargar eventos");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error cargando eventos");
-            ErrorMessage = "Error al cargar eventos";
+            Toast.ShowError("Error al cargar eventos");
         }
         finally
         {
@@ -176,7 +166,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error cargando sectores");
-            ErrorMessage = "Error al cargar sectores";
+            Toast.ShowError("Error al cargar sectores");
         }
     }
 
@@ -184,36 +174,44 @@
     {
         if (string.IsNullOrEmpty(SelectedEventoId) || string.IsNullOrEmpty(SelectedSectorId) || Cantidad < 1 || Cantidad > 5)
         {
-            ErrorMessage = "Por favor completa todos los campos correctamente";
+            Toast.ShowError("Por favor completa todos los campos correctamente");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(MiDocumento))
+        {
+            Toast.ShowError("No se pudo identificar tu usuario. Volvé a iniciar sesión.");
             return;
         }
 
         IsLoading = true;
-        ErrorMessage = null;
-        SuccessMessage = null;
 
         try
         {
+            // CrearVentaRequest: una venta con un item por entrada (mismo sector/evento).
+            var idSector = int.Parse(SelectedSectorId);
+            var idEvento = int.Parse(SelectedEventoId);
             var request = new
             {
-                IdEventoDeportivo = int.Parse(SelectedEventoId),
-                IdSector = int.Parse(SelectedSectorId),
-                Cantidad = Cantidad
+                NumeroDocumentoUsuario = MiDocumento,
+                Items = Enumerable.Range(0, Cantidad)
+                    .Select(_ => new { IdSector = idSector, IdEventoDeportivo = idEvento })
+                    .ToList()
             };
 
-            var response = await HttpClient.PostAsJsonAsync("api/Ventas/comprar", request);
+            var response = await HttpClient.PostAsJsonAsync("api/Ventas", request);
 
             if (response.IsSuccessStatusCode)
             {
-                SuccessMessage = $"¡Compra exitosa! Pagaste ${Cantidad * 100}";
+                Toast.ShowSuccess($"¡Compra exitosa! {Cantidad} entrada(s) por ${Cantidad * 100}.");
                 Logger.LogInformation("Compra exitosa: {Cantidad} entradas", Cantidad);
-                
+
                 // Limpiar formulario
                 SelectedEventoId = "";
                 SelectedSectorId = "";
                 Sectores = new();
                 Cantidad = 1;
-                
+
                 // Redirigir después de 2 segundos
                 await Task.Delay(2000);
                 NavManager.NavigateTo("/");
@@ -221,14 +219,14 @@
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                ErrorMessage = "Error al procesar la compra. Por favor intenta nuevamente.";
+                Toast.ShowError("Error al procesar la compra. Puede que no haya entradas suficientes en el sector.");
                 Logger.LogWarning("Error en compra: {Status} - {Content}", response.StatusCode, errorContent);
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error procesando compra");
-            ErrorMessage = "Error inesperado al procesar la compra";
+            Toast.ShowError("Error inesperado al procesar la compra");
         }
         finally
         {

@@ -8,4 +8,9 @@ public sealed record EntradaResponse(
     decimal Costo,
     int IdSector,
     int IdEventoDeportivo,
-    int IdVenta);
+    int IdVenta,
+    string NombreLocal,
+    string NombreVisitante,
+    DateOnly FechaEvento,
+    string NombreEstadio,
+    string NombreSector);

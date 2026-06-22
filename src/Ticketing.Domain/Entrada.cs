@@ -12,4 +12,11 @@ public sealed class Entrada
     public int IdEventoDeportivo { get; set; }
     public string NumeroDocumentoAdministrador { get; set; } = string.Empty;
     public int IdVenta { get; set; }
+
+    // Campos derivados (no se persisten): provienen de JOINs en la query.
+    public string NombreLocal { get; set; } = string.Empty;
+    public string NombreVisitante { get; set; } = string.Empty;
+    public DateOnly FechaEvento { get; set; }
+    public string NombreEstadio { get; set; } = string.Empty;
+    public string NombreSector { get; set; } = string.Empty;
 }

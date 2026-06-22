@@ -14,8 +14,9 @@ public interface IVentaService
 public sealed class VentaService : IVentaService
 {
     private readonly IVentaRepository _repository;
-    private const int idComisionDefault = 1;
-    private const decimal costoDefault = 100m;
+    private const int idComisionDefault = 1;       // 5% (solo referencia/FK; no se suma al monto)
+    private const int idEstadoVentaPendiente = 1;  // estado_venta: 'Pendiente'
+    private const decimal costoDefault = 100m;      // precio fijo por entrada
 
     public VentaService(IVentaRepository repository) => _repository = repository;
 
@@ -24,10 +25,10 @@ public sealed class VentaService : IVentaService
         // Validar máximo 5 entradas por transacción
         if (request.Items.Count is < 1 or > 5)
             throw new InvalidOperationException("La venta debe tener entre 1 y 5 entradas");
-        
-        // Calcular monto total (por ahora costo fijo de $100 por entrada)
+
+        // Monto total = cantidad x precio (sin comisión).
         var montoTotal = request.Items.Count * costoDefault;
-        
+
         var venta = new Venta
         {
             NumeroDocumentoUsuario = request.NumeroDocumentoUsuario,
@@ -35,32 +36,31 @@ public sealed class VentaService : IVentaService
             Fecha = DateTime.UtcNow,
             MontoTotal = montoTotal
         };
-        
+
         var entradas = request.Items.Select(item => new Entrada
         {
-            Estado = "disponible",
+            Estado = "Disponible",
             Fecha = DateTime.UtcNow,
-            EstadoSeed = "inicial",
             QrUsado = false,
             Costo = costoDefault,
             IdSector = item.IdSector,
-            IdEventoDeportivo = item.IdEventoDeportivo,
-            NumeroDocumentoAdministrador = null
+            IdEventoDeportivo = item.IdEventoDeportivo
         }).ToList();
-        
-        var ventaId = await _repository.CreateAsync(venta, entradas, ct);
-        
-        // Recuperar la venta creada para devolverla
+
+        // El repo valida disponibilidad/habilitación, crea venta + estado + entradas en una
+        // transacción y completa el Id real de cada entrada.
+        var ventaId = await _repository.CreateAsync(venta, entradas, idEstadoVentaPendiente, ct);
+
         var ventaCreada = await _repository.GetByIdAsync(ventaId, ct)
             ?? throw new InvalidOperationException("Error al recuperar la venta creada");
-        
+
         return new VentaResponse(
             ventaCreada.Id,
             ventaCreada.NumeroDocumentoUsuario,
             ventaCreada.Fecha,
             ventaCreada.MontoTotal,
-            entradas.Select((e, i) => new EntradaVendidaResponse(
-                i + 1, // Simulado - en producción sería del ID real de entrada
+            entradas.Select(e => new EntradaVendidaResponse(
+                e.Id,
                 e.IdSector,
                 e.IdEventoDeportivo,
                 e.Costo

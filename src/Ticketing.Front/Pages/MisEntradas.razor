@@ -1,0 +1,187 @@
+@page "/mis-entradas"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@using Ticketing.Contracts.Entradas
+@using Ticketing.Contracts.Usuarios
+@using Ticketing.Contracts.Transferencias
+@using Ticketing.Front.ApiClients
+@using Ticketing.Front.Services
+@inject EntradasApiClient EntradasClient
+@inject UsuariosApiClient UsuariosClient
+@inject TransferenciasApiClient TransferenciasClient
+@inject FirebaseAuthenticationService AuthService
+@inject ToastService Toast
+@inject ILogger<MisEntradas> Logger
+
+<PageTitle>Mis Entradas</PageTitle>
+
+<div class="container mt-5">
+    <h1 class="mb-4">Mis Entradas</h1>
+
+    @if (IsLoading)
+    {
+        <p class="text-muted">Cargando...</p>
+    }
+    else if (Entradas.Count == 0)
+    {
+        <p class="text-muted">No tenés entradas todavía.</p>
+    }
+    else
+    {
+        @foreach (var entrada in Entradas)
+        {
+            <div class="card mb-3">
+                <div class="card-body d-flex justify-content-between align-items-start flex-wrap gap-3">
+                    <div>
+                        <h5 class="card-title mb-1">@entrada.NombreLocal vs @entrada.NombreVisitante</h5>
+                        <p class="text-muted mb-1">
+                            @entrada.FechaEvento.ToString("dd/MM/yyyy")
+                            @(string.IsNullOrWhiteSpace(entrada.NombreEstadio) ? "" : $" · {entrada.NombreEstadio}")
+                            · Sector @entrada.NombreSector
+                        </p>
+                        <p class="text-muted mb-0">
+                            Entrada #@entrada.Id · Estado: @entrada.Estado @(entrada.QrUsado ? "· QR usado" : "")
+                        </p>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" @onclick="() => IniciarTransferencia(entrada.Id)" disabled="@(TransfiriendoEntradaId == entrada.Id)">
+                            Transferir
+                        </button>
+                    </div>
+                </div>
+
+                @if (TransfiriendoEntradaId == entrada.Id)
+                {
+                    <div class="card-body border-top">
+                        <label class="form-label">Transferir a</label>
+                        @if (Generales.Count == 0)
+                        {
+                            <p class="text-muted">No hay otros usuarios generales disponibles.</p>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <select class="form-select" style="max-width: 360px;" @bind="ReceptorSeleccionado">
+                                    <option value="">Selecciona un usuario</option>
+                                    @foreach (var usuario in Generales)
+                                    {
+                                        <option value="@usuario.NumeroDocumento">@usuario.Mail (@usuario.NumeroDocumento)</option>
+                                    }
+                                </select>
+                                <button class="btn btn-primary" @onclick="() => ConfirmarTransferencia(entrada.Id)"
+                                        disabled="@(IsTransferring || string.IsNullOrEmpty(ReceptorSeleccionado))">
+                                    Confirmar
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="CancelarTransferencia" disabled="@IsTransferring">
+                                    Cancelar
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<EntradaResponse> Entradas = new();
+    private List<UsuarioResponse> Generales = new();
+    private string? MiDocumento;
+    private int? TransfiriendoEntradaId;
+    private string ReceptorSeleccionado = "";
+    private bool IsLoading = true;
+    private bool IsTransferring;
+    private const int MaxTransferencias = 3;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var role = await AuthService.GetUserRoleAsync();
+            MiDocumento = role?.NumeroDocumento;
+
+            if (string.IsNullOrEmpty(MiDocumento))
+            {
+                Toast.ShowError("No se pudo identificar tu usuario.");
+                return;
+            }
+
+            await CargarEntradasAsync();
+
+            var generales = await UsuariosClient.GetGeneralesAsync();
+            Generales = generales.Where(u => u.NumeroDocumento != MiDocumento).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error cargando mis entradas");
+            Toast.ShowError("Error al cargar tus entradas.");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task CargarEntradasAsync()
+    {
+        var entradas = await EntradasClient.GetDeUsuarioAsync(MiDocumento!);
+        Entradas = entradas.ToList();
+    }
+
+    private void IniciarTransferencia(int idEntrada)
+    {
+        TransfiriendoEntradaId = idEntrada;
+        ReceptorSeleccionado = "";
+    }
+
+    private void CancelarTransferencia()
+    {
+        TransfiriendoEntradaId = null;
+        ReceptorSeleccionado = "";
+    }
+
+    private async Task ConfirmarTransferencia(int idEntrada)
+    {
+        if (string.IsNullOrEmpty(ReceptorSeleccionado) || string.IsNullOrEmpty(MiDocumento))
+            return;
+
+        IsTransferring = true;
+
+        try
+        {
+            // Validar el tope de transferencias antes de intentar: si ya se transfirió 3 veces, no se realiza.
+            var transferenciasPrevias = await TransferenciasClient.ContarTransferenciasAsync(idEntrada);
+            if (transferenciasPrevias >= MaxTransferencias)
+            {
+                Toast.ShowError($"La entrada #{idEntrada} ya alcanzó el límite de {MaxTransferencias} transferencias.");
+                return;
+            }
+
+            var request = new TransferirEntradaRequest(idEntrada, MiDocumento, ReceptorSeleccionado);
+            var error = await TransferenciasClient.TransferirAsync(request);
+
+            if (error is null)
+            {
+                Toast.ShowSuccess($"Entrada #{idEntrada} transferida correctamente.");
+                TransfiriendoEntradaId = null;
+                ReceptorSeleccionado = "";
+                await CargarEntradasAsync();
+            }
+            else
+            {
+                Logger.LogWarning("Error al transferir entrada {Id}: {Error}", idEntrada, error);
+                Toast.ShowError("No se pudo transferir la entrada.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error transfiriendo entrada {Id}", idEntrada);
+            Toast.ShowError("Error inesperado al transferir la entrada.");
+        }
+        finally
+        {
+            IsTransferring = false;
+        }
+    }
+}

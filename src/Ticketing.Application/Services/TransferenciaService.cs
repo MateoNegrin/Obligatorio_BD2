@@ -25,6 +25,17 @@ public sealed class TransferenciaService : ITransferenciaService
 
     public async Task TransferirAsync(TransferirEntradaRequest request, CancellationToken ct = default)
     {
+        // No se puede transferir a uno mismo
+        if (request.NumeroDocumentoEmisor == request.NumeroDocumentoReceptor)
+            throw new InvalidOperationException("No se puede transferir una entrada a uno mismo.");
+
+        // Validar que el emisor sea el dueño actual de la entrada
+        var propietarioActual = await _entradaRepository.GetPropietarioActualAsync(request.IdEntrada, ct);
+        if (propietarioActual is null)
+            throw new InvalidOperationException($"La entrada {request.IdEntrada} no existe.");
+        if (propietarioActual != request.NumeroDocumentoEmisor)
+            throw new InvalidOperationException("Solo el dueño actual de la entrada puede transferirla.");
+
         // Validar que no supere 3 transferencias
         var cantTransferencias = await _repository.ContarTransferenciasAsync(request.IdEntrada, ct);
         if (cantTransferencias >= 3)

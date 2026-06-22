@@ -7,6 +7,7 @@ namespace Ticketing.Application.Services;
 public interface IUsuarioService
 {
     Task<IReadOnlyList<UsuarioResponse>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<UsuarioResponse>> GetGeneralesAsync(CancellationToken ct = default);
     Task<UsuarioResponse?> GetByDocumentoAsync(string numeroDocumento, CancellationToken ct = default);
     Task CreateAsync(CrearUsuarioRequest request, CancellationToken ct = default);
     Task UpdateAsync(string numeroDocumento, ActualizarUsuarioRequest request, CancellationToken ct = default);
@@ -22,6 +23,20 @@ public sealed class UsuarioService : IUsuarioService
     public async Task<IReadOnlyList<UsuarioResponse>> GetAllAsync(CancellationToken ct = default)
     {
         var usuarios = await _repository.GetAllAsync(ct);
+        return usuarios.Select(u => new UsuarioResponse(
+            u.NumeroDocumento,
+            u.Mail,
+            u.Pais,
+            u.Localidad,
+            u.Calle,
+            u.NumeroDireccion,
+            u.CodigoPostal,
+            u.FechaRegistro)).ToList();
+    }
+
+    public async Task<IReadOnlyList<UsuarioResponse>> GetGeneralesAsync(CancellationToken ct = default)
+    {
+        var usuarios = await _repository.GetGeneralesAsync(ct);
         return usuarios.Select(u => new UsuarioResponse(
             u.NumeroDocumento,
             u.Mail,
