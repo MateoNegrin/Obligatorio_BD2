@@ -14,4 +14,10 @@ public sealed class EventosApiClient
 
     public async Task<IReadOnlyList<SectorDisponibleResponse>> GetSectoresDisponiblesAsync(int idEvento, CancellationToken ct = default)
         => await _http.GetFromJsonAsync<IReadOnlyList<SectorDisponibleResponse>>($"api/Eventos/{idEvento}/sectores-disponibles", ct) ?? [];
+
+    public async Task<HttpResponseMessage> CreateAsync(CrearEventoRequest request, CancellationToken ct = default)
+        => await _http.PostAsJsonAsync("api/Eventos", request, ct);
+
+    public async Task<HttpResponseMessage> UpdateAsync(int id, ActualizarEventoRequest request, CancellationToken ct = default)
+        => await _http.PutAsJsonAsync($"api/Eventos/{id}", request, ct);
 }

@@ -1,7 +1,13 @@
 @page "/eventos"
 @using Ticketing.Contracts.Eventos
+@using Ticketing.Contracts.Equipos
+@using Ticketing.Contracts.Estadios
 @using Ticketing.Front.ApiClients
 @inject EventosApiClient Client
+@inject EquiposApiClient EquiposClient
+@inject EstadiosApiClient EstadiosClient
+@inject FirebaseAuthenticationService AuthService
+@inject ToastService Toast
 
 <PageTitle>Eventos</PageTitle>
 
@@ -15,36 +21,301 @@ else if (_eventos is null)
 {
     <p>Cargando...</p>
 }
-else if (_eventos.Count == 0)
-{
-    <p>No hay eventos.</p>
-}
 else
 {
     <table class="table">
-        <thead><tr><th>Id</th><th>Local</th><th>Visitante</th><th>Estadio</th><th>Fecha</th><th>Hora</th><th>Disponibles</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Local</th>
+                <th>Visitante</th>
+                <th>Estadio</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Disponibles</th>
+                @if (_esAdmin)
+                {
+                    <th class="text-end">Acciones</th>
+                }
+            </tr>
+        </thead>
         <tbody>
         @foreach (var e in _eventos)
         {
-            <tr><td>@e.Id</td><td>@e.NombreLocal</td><td>@e.NombreVisitante</td><td>@e.NombreEstadio</td><td>@e.Fecha</td><td>@e.Hora</td><td>@e.EntradasDisponibles</td></tr>
+            <tr>
+                <td>@e.Id</td>
+                <td>@e.NombreLocal</td>
+                <td>@e.NombreVisitante</td>
+                <td>@e.NombreEstadio</td>
+                <td>@e.Fecha</td>
+                <td>@e.Hora</td>
+                <td>@e.EntradasDisponibles</td>
+                @if (_esAdmin)
+                {
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => AbrirEditar(e)">Editar</button>
+                    </td>
+                }
+            </tr>
+        }
+        @if (_esAdmin)
+        {
+            <tr>
+                <td colspan="8" class="text-center">
+                    <button class="btn btn-sm btn-success" @onclick="AbrirCrear">+ Nuevo evento</button>
+                </td>
+            </tr>
         }
         </tbody>
     </table>
 }
 
+@if (_showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editId is null ? "Nuevo evento" : "Editar evento")</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Equipo local</label>
+                        <select class="form-select" @bind="_idLocal">
+                            <option value="0">Selecciona un equipo</option>
+                            @foreach (var eq in _equipos)
+                            {
+                                <option value="@eq.Id">@eq.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Equipo visitante</label>
+                        <select class="form-select" @bind="_idVisitante">
+                            <option value="0">Selecciona un equipo</option>
+                            @foreach (var eq in _equipos)
+                            {
+                                <option value="@eq.Id">@eq.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <label class="form-label">Fecha</label>
+                            <input type="date" class="form-control" @bind="_fecha" />
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Hora</label>
+                            <input type="time" class="form-control" @bind="_hora" />
+                        </div>
+                    </div>
+
+                    @if (_editId is null)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Estadio</label>
+                            <select class="form-select" @bind="_idEstadio" @bind:after="OnEstadioChanged">
+                                <option value="0">Selecciona un estadio</option>
+                                @foreach (var es in _estadios)
+                                {
+                                    <option value="@es.Id">@es.NombreSede — @es.Ubicacion</option>
+                                }
+                            </select>
+                            <small class="text-muted">Solo podrás crear el evento si el estadio pertenece a tu sede.</small>
+                        </div>
+
+                        @if (_idEstadio > 0)
+                        {
+                            <label class="form-label">Sectores habilitados (mínimo 1)</label>
+                            @foreach (var s in _sectores)
+                            {
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" @bind="s.Seleccionado" id="sec-@s.Id" />
+                                    <label class="form-check-label" for="sec-@s.Id">@s.Nombre — capacidad @s.Capacidad</label>
+                                </div>
+                            }
+                            <p class="text-muted mt-2 mb-0">Entradas disponibles: <strong>@_sectores.Where(s => s.Seleccionado).Sum(s => s.Capacidad)</strong></p>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted">Los sectores habilitados no se modifican (pueden tener entradas vendidas).</p>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CerrarModal" disabled="@_saving">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="Guardar" disabled="@_saving">
+                        @(_saving ? "Guardando..." : "Guardar")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private IReadOnlyList<EventoResponse>? _eventos;
+    private IReadOnlyList<EquipoResponse> _equipos = [];
+    private IReadOnlyList<EstadioResponse> _estadios = [];
     private string? _error;
+    private bool _esAdmin;
+    private string? _miDocumento;
+
+    private bool _showModal;
+    private bool _saving;
+    private int? _editId;
+    private int _idLocal;
+    private int _idVisitante;
+    private DateOnly _fecha = DateOnly.FromDateTime(DateTime.Today);
+    private TimeOnly _hora = new(20, 0);
+    private int _idEstadio;
+    private List<SectorPick> _sectores = new();
 
     protected override async Task OnInitializedAsync()
+    {
+        var role = await AuthService.GetUserRoleAsync();
+        _esAdmin = role?.Role == "Admin";
+        _miDocumento = role?.NumeroDocumento;
+        await CargarAsync();
+
+        if (_esAdmin)
+        {
+            try
+            {
+                _equipos = await EquiposClient.GetAllAsync();
+                _estadios = await EstadiosClient.GetAllAsync();
+            }
+            catch (Exception ex)
+            {
+                Toast.ShowError($"No se pudieron cargar equipos/estadios: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task CargarAsync()
     {
         try
         {
             _eventos = await Client.GetAllAsync();
+            _error = null;
         }
         catch (Exception ex)
         {
             _error = $"Error llamando a la API: {ex.Message}";
         }
+    }
+
+    private void AbrirCrear()
+    {
+        _editId = null;
+        _idLocal = 0;
+        _idVisitante = 0;
+        _fecha = DateOnly.FromDateTime(DateTime.Today);
+        _hora = new(20, 0);
+        _idEstadio = 0;
+        _sectores = new();
+        _showModal = true;
+    }
+
+    private void AbrirEditar(EventoResponse evento)
+    {
+        _editId = evento.Id;
+        _idLocal = evento.IdEquipoLocal;
+        _idVisitante = evento.IdEquipoVisitante;
+        _fecha = evento.Fecha;
+        _hora = evento.Hora;
+        _showModal = true;
+    }
+
+    private async Task OnEstadioChanged()
+    {
+        _sectores = new();
+        if (_idEstadio <= 0)
+            return;
+
+        try
+        {
+            var sectores = await EstadiosClient.GetSectoresAsync(_idEstadio);
+            _sectores = sectores
+                .Select(s => new SectorPick { Id = s.Id, Nombre = s.Nombre, Capacidad = s.Capacidad })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"No se pudieron cargar los sectores: {ex.Message}");
+        }
+    }
+
+    private void CerrarModal() => _showModal = false;
+
+    private async Task Guardar()
+    {
+        if (_idLocal <= 0 || _idVisitante <= 0)
+        {
+            Toast.ShowError("Selecciona el equipo local y el visitante.");
+            return;
+        }
+        if (_idLocal == _idVisitante)
+        {
+            Toast.ShowError("El equipo local y el visitante deben ser distintos.");
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            HttpResponseMessage response;
+            if (_editId is null)
+            {
+                var seleccionados = _sectores.Where(s => s.Seleccionado).Select(s => s.Id).ToList();
+                if (seleccionados.Count == 0)
+                {
+                    Toast.ShowError("Habilita al menos un sector.");
+                    return;
+                }
+                if (string.IsNullOrEmpty(_miDocumento))
+                {
+                    Toast.ShowError("No se pudo identificar tu usuario administrador.");
+                    return;
+                }
+
+                var request = new CrearEventoRequest(_miDocumento, _idLocal, _idVisitante, _fecha, _hora, seleccionados);
+                response = await Client.CreateAsync(request);
+            }
+            else
+            {
+                var request = new ActualizarEventoRequest(_idLocal, _idVisitante, _fecha, _hora);
+                response = await Client.UpdateAsync(_editId.Value, request);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                Toast.ShowSuccess(_editId is null ? "Evento creado." : "Evento actualizado.");
+                _showModal = false;
+                await CargarAsync();
+            }
+            else
+            {
+                var detalle = await response.Content.ReadAsStringAsync();
+                Toast.ShowError($"Error al guardar: {detalle}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error inesperado: {ex.Message}");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private sealed class SectorPick
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; } = "";
+        public int Capacidad { get; set; }
+        public bool Seleccionado { get; set; }
     }
 }

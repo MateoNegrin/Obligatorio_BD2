@@ -86,6 +86,80 @@ public sealed class EstadioRepository : IEstadioRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
+    public async Task<int> CreateConSectoresAsync(Estadio estadio, IReadOnlyList<Sector> sectores, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        var mysqlConn = (MySqlConnection)conn;
+        await using var transaction = await mysqlConn.BeginTransactionAsync(ct);
+
+        try
+        {
+            await using var cmdEstadio = new MySqlCommand(
+                "INSERT INTO estadio (nombre_sede, capacidad_maxima, ubicacion) VALUES (@nombre_sede, @capacidad_maxima, @ubicacion); SELECT LAST_INSERT_ID();",
+                mysqlConn, transaction);
+            cmdEstadio.Parameters.AddWithValue("@nombre_sede", estadio.NombreSede);
+            cmdEstadio.Parameters.AddWithValue("@capacidad_maxima", estadio.CapacidadMaxima);
+            cmdEstadio.Parameters.AddWithValue("@ubicacion", estadio.Ubicacion ?? string.Empty);
+            var idEstadio = Convert.ToInt32(await cmdEstadio.ExecuteScalarAsync(ct));
+
+            foreach (var sector in sectores)
+            {
+                await using var cmdSector = new MySqlCommand(
+                    "INSERT INTO sector (id_estadio, nombre, capacidad) VALUES (@id_estadio, @nombre, @capacidad)",
+                    mysqlConn, transaction);
+                cmdSector.Parameters.AddWithValue("@id_estadio", idEstadio);
+                cmdSector.Parameters.AddWithValue("@nombre", sector.Nombre);
+                cmdSector.Parameters.AddWithValue("@capacidad", sector.Capacidad);
+                await cmdSector.ExecuteNonQueryAsync(ct);
+            }
+
+            await transaction.CommitAsync(ct);
+            return idEstadio;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    public async Task UpdateConSectoresAsync(Estadio estadio, IReadOnlyList<Sector> sectores, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        var mysqlConn = (MySqlConnection)conn;
+        await using var transaction = await mysqlConn.BeginTransactionAsync(ct);
+
+        try
+        {
+            await using var cmdEstadio = new MySqlCommand(
+                "UPDATE estadio SET capacidad_maxima = @capacidad_maxima, ubicacion = @ubicacion WHERE id = @id",
+                mysqlConn, transaction);
+            cmdEstadio.Parameters.AddWithValue("@capacidad_maxima", estadio.CapacidadMaxima);
+            cmdEstadio.Parameters.AddWithValue("@ubicacion", estadio.Ubicacion ?? string.Empty);
+            cmdEstadio.Parameters.AddWithValue("@id", estadio.Id);
+            await cmdEstadio.ExecuteNonQueryAsync(ct);
+
+            foreach (var sector in sectores)
+            {
+                await using var cmdSector = new MySqlCommand(
+                    "UPDATE sector SET nombre = @nombre, capacidad = @capacidad WHERE id = @id AND id_estadio = @id_estadio",
+                    mysqlConn, transaction);
+                cmdSector.Parameters.AddWithValue("@nombre", sector.Nombre);
+                cmdSector.Parameters.AddWithValue("@capacidad", sector.Capacidad);
+                cmdSector.Parameters.AddWithValue("@id", sector.Id);
+                cmdSector.Parameters.AddWithValue("@id_estadio", estadio.Id);
+                await cmdSector.ExecuteNonQueryAsync(ct);
+            }
+
+            await transaction.CommitAsync(ct);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
+    }
+
     public async Task<IReadOnlyList<Sector>> GetSectoresAsync(int idEstadio, CancellationToken ct = default)
     {
         await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
