@@ -6,7 +6,7 @@ public sealed class Entrada
     public string Estado { get; set; } = string.Empty;
     public DateTime Fecha { get; set; }
     public string EstadoSeed { get; set; } = string.Empty;
-    public bool QrUsado { get; set; }
+    public string? QrUsado { get; set; }
     public decimal Costo { get; set; }
     public int IdSector { get; set; }
     public int IdEventoDeportivo { get; set; }

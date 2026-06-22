@@ -41,7 +41,8 @@ public sealed class VentaService : IVentaService
         {
             Estado = "Disponible",
             Fecha = DateTime.UtcNow,
-            QrUsado = false,
+            EstadoSeed = Guid.NewGuid().ToString("N"),
+            QrUsado = null,
             Costo = costoDefault,
             IdSector = item.IdSector,
             IdEventoDeportivo = item.IdEventoDeportivo

@@ -7,6 +7,7 @@ public interface IEntradaService
 {
     Task<IReadOnlyList<EntradaResponse>> GetDeUsuarioAsync(string numeroDocumentoUsuario, CancellationToken ct = default);
     Task<EntradaResponse?> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<IReadOnlyList<EntradaResponse>> GetSinValidarAsync(CancellationToken ct = default);
 }
 
 public sealed class EntradaService : IEntradaService
@@ -52,5 +53,24 @@ public sealed class EntradaService : IEntradaService
             entrada.FechaEvento,
             entrada.NombreEstadio,
             entrada.NombreSector);
+    }
+
+    public async Task<IReadOnlyList<EntradaResponse>> GetSinValidarAsync(CancellationToken ct = default)
+    {
+        var entradas = await _repository.GetSinValidarAsync(ct);
+        return entradas.Select(e => new EntradaResponse(
+            e.Id,
+            e.Estado,
+            e.Fecha,
+            e.QrUsado,
+            e.Costo,
+            e.IdSector,
+            e.IdEventoDeportivo,
+            e.IdVenta,
+            e.NombreLocal,
+            e.NombreVisitante,
+            e.FechaEvento,
+            e.NombreEstadio,
+            e.NombreSector)).ToList();
     }
 }

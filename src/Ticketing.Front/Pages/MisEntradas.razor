@@ -40,7 +40,7 @@
                             · Sector @entrada.NombreSector
                         </p>
                         <p class="text-muted mb-0">
-                            Entrada #@entrada.Id · Estado: @entrada.Estado @(entrada.QrUsado ? "· QR usado" : "")
+                            Entrada #@entrada.Id · Estado: @entrada.Estado @(!string.IsNullOrEmpty(entrada.QrUsado) ? "· QR usado" : "")
                         </p>
                     </div>
                     <div>

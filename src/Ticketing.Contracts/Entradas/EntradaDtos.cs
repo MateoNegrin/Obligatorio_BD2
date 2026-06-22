@@ -4,7 +4,7 @@ public sealed record EntradaResponse(
     int Id,
     string Estado,
     DateTime Fecha,
-    bool QrUsado,
+    string? QrUsado,
     decimal Costo,
     int IdSector,
     int IdEventoDeportivo,

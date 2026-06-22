@@ -26,4 +26,9 @@ public sealed class EntradasController : ControllerBase
         var entrada = await _service.GetByIdAsync(id, ct);
         return entrada is null ? NotFound() : Ok(entrada);
     }
+
+    [HttpGet("sin-validar")]
+    [ProducesResponseType(typeof(IReadOnlyList<EntradaResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSinValidar(CancellationToken ct)
+        => Ok(await _service.GetSinValidarAsync(ct));
 }
