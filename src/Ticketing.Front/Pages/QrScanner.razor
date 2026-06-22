@@ -1,50 +1,59 @@
 @page "/qr-scanner"
-@using System.Net.Http.Json
-
+@page "/validar-entrada"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@using Ticketing.Contracts.Entradas
+@using Ticketing.Front.ApiClients
+@using Ticketing.Front.Services
 @inject HttpClient HttpClient
 @inject ILogger<QrScanner> Logger
+@inject FirebaseAuthenticationService AuthService
+@inject ToastService Toast
+@inject DispositivosApiClient DispositivosClient
+
+<PageTitle>Validar Entrada</PageTitle>
 
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card shadow-lg">
                 <div class="card-body p-5">
-                    <h1 class="card-title mb-4">Escanear Código QR</h1>
+                    <h1 class="card-title mb-4">Validar Entrada</h1>
 
-                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    @if (IsLoading)
                     {
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            @ErrorMessage
-                            <button type="button" class="btn-close" @onclick="@(() => ErrorMessage = null)"></button>
-                        </div>
+                        <p class="text-muted">Cargando datos...</p>
                     }
-
-                    @if (!string.IsNullOrEmpty(SuccessMessage))
+                    else
                     {
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            @SuccessMessage
-                            <button type="button" class="btn-close" @onclick="@(() => SuccessMessage = null)"></button>
+                        <div class="mb-3">
+                            <label for="entrada" class="form-label">Entrada</label>
+                            <select class="form-select" id="entrada" @bind="SelectedEntradaId" disabled="@IsValidating">
+                                <option value="">Selecciona una entrada</option>
+                                @foreach (var entrada in Entradas)
+                                {
+                                    <option value="@entrada.Id">
+                                        #@entrada.Id — @entrada.NombreLocal vs @entrada.NombreVisitante · @entrada.FechaEvento.ToString("dd/MM/yyyy") · @entrada.NombreSector
+                                    </option>
+                                }
+                            </select>
                         </div>
-                    }
 
-                    <div class="mb-3">
-                        <label for="qrInput" class="form-label">Código QR</label>
-                        <input
-                            type="text"
-                            class="form-control form-control-lg"
-                            id="qrInput"
-                            @bind="QrCode"
-                            @onkeydown="HandleQrInput"
-                            placeholder="Escanea el código QR aquí..."
-                            autofocus />
-                    </div>
+                        <div class="mb-3">
+                            <label for="dispositivo" class="form-label">Dispositivo autorizado</label>
+                            <select class="form-select" id="dispositivo" @bind="SelectedDispositivoId" disabled="@IsValidating">
+                                <option value="">Selecciona un dispositivo</option>
+                                @foreach (var d in Dispositivos)
+                                {
+                                    <option value="@d.Id">@d.Nombre</option>
+                                }
+                            </select>
+                        </div>
 
-                    <div class="mb-3">
                         <button
-                            type="button"
                             class="btn btn-primary w-100"
-                            @onclick="ValidateQr"
-                            disabled="@(string.IsNullOrEmpty(QrCode) || IsValidating)">
+                            @onclick="HandleValidar"
+                            disabled="@(IsValidating || string.IsNullOrEmpty(SelectedEntradaId) || string.IsNullOrEmpty(SelectedDispositivoId))">
                             @if (IsValidating)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -55,43 +64,7 @@
                                 <span>Validar Entrada</span>
                             }
                         </button>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(ValidationStatus))
-                    {
-                        <div class="alert @(IsValidated ? "alert-success" : "alert-warning")">
-                            <strong>Resultado:</strong> @ValidationStatus
-                        </div>
                     }
-
-                    <hr />
-
-                    <h5>Historial de Validaciones</h5>
-                    <div style="max-height: 300px; overflow-y: auto;">
-                        @if (ValidationHistory.Count == 0)
-                        {
-                            <p class="text-muted">Sin validaciones aún</p>
-                        }
-                        else
-                        {
-                            <table class="table table-sm table-hover">
-                                <tbody>
-                                    @foreach (var record in ValidationHistory)
-                                    {
-                                        <tr class="@(record.Success ? "table-success" : "table-danger")">
-                                            <td>
-                                                <small>
-                                                    <strong>@record.QrCode</strong>
-                                                    <br />
-                                                    @record.Timestamp.ToString("HH:mm:ss")
-                                                </small>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        }
-                    </div>
                 </div>
             </div>
         </div>
@@ -99,98 +72,121 @@
 </div>
 
 @code {
-    private string QrCode = "";
-    private string? ErrorMessage;
-    private string? SuccessMessage;
-    private string? ValidationStatus;
-    private bool IsValidating = false;
-    private bool IsValidated = false;
-    private List<ValidationRecord> ValidationHistory = new();
+    private List<EntradaResponse> Entradas = new();
+    private List<DispositivosApiClient.DispositivoDto> Dispositivos = new();
+    private string SelectedEntradaId = "";
+    private string SelectedDispositivoId = "";
+    private string? MiDocumento;
+    private bool IsLoading = true;
+    private bool IsValidating;
 
-    private async Task HandleQrInput(KeyboardEventArgs e)
+    protected override async Task OnInitializedAsync()
     {
-        if (e.Key == "Enter")
-        {
-            await ValidateQr();
-        }
-    }
-
-    private async Task ValidateQr()
-    {
-        if (string.IsNullOrWhiteSpace(QrCode))
-        {
-            ErrorMessage = "Ingresa un código QR";
-            return;
-        }
-
-        IsValidating = true;
-        ErrorMessage = null;
-        SuccessMessage = null;
-        ValidationStatus = null;
-
         try
         {
-            var response = await HttpClient.GetAsync($"api/Validacion/validar/{Uri.EscapeDataString(QrCode)}");
+            var role = await AuthService.GetUserRoleAsync();
+            MiDocumento = role?.NumeroDocumento;
+            Logger.LogInformation("Usuario: {MiDocumento}, Rol: {Rol}", MiDocumento, role?.Role);
 
-            if (response.IsSuccessStatusCode)
+            // Cargar todas las entradas no validadas
+            try
             {
-                var content = await response.Content.ReadAsStringAsync();
-                var result = System.Text.Json.JsonSerializer.Deserialize<ValidationResponse>(content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                ValidationStatus = result?.Message ?? "Entrada validada exitosamente";
-                IsValidated = true;
-                SuccessMessage = "✓ Entrada validada";
+                var response = await HttpClient.GetAsync("api/Entradas/sin-validar");
+                Logger.LogInformation("Respuesta de Entradas: {Status}", response.StatusCode);
                 
-                // Agregar al historial
-                ValidationHistory.Insert(0, new ValidationRecord
+                if (response.IsSuccessStatusCode)
                 {
-                    QrCode = QrCode,
-                    Success = true,
-                    Timestamp = DateTime.Now
-                });
-
-                Logger.LogInformation("Validación exitosa: {QrCode}", QrCode);
+                    var json = await response.Content.ReadFromJsonAsync<List<EntradaResponse>>();
+                    Entradas = json ?? new();
+                    Logger.LogInformation("Entradas cargadas: {Count}", Entradas.Count);
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Logger.LogError("Error cargando entradas: {Status} - {Error}", response.StatusCode, errorContent);
+                    Toast.ShowError($"Error cargando entradas: {response.StatusCode}");
+                }
             }
-            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            catch (Exception ex)
             {
-                ValidationStatus = "Entrada no encontrada o ya validada";
-                IsValidated = false;
-                ErrorMessage = "✗ Entrada no válida";
-                
-                ValidationHistory.Insert(0, new ValidationRecord
+                Logger.LogError(ex, "Excepción cargando entradas");
+                Toast.ShowError("Error al cargar entradas");
+            }
+
+            // Cargar dispositivos del funcionario logueado
+            if (!string.IsNullOrEmpty(MiDocumento))
+            {
+                try
                 {
-                    QrCode = QrCode,
-                    Success = false,
-                    Timestamp = DateTime.Now
-                });
+                    Dispositivos = (await DispositivosClient.GetByFuncionarioAsync(MiDocumento)).ToList();
+                    Logger.LogInformation("Dispositivos cargados: {Count}", Dispositivos.Count);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Excepción cargando dispositivos");
+                    Toast.ShowError("Error al cargar dispositivos");
+                }
             }
             else
             {
-                ValidationStatus = "Error al validar la entrada";
-                IsValidated = false;
-                ErrorMessage = "✗ Error en la validación";
+                Logger.LogWarning("MiDocumento es null");
+                Toast.ShowError("No se pudo obtener el documento del usuario");
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error validando QR");
-            ErrorMessage = "Error inesperado al validar";
-            IsValidated = false;
+            Logger.LogError(ex, "Error en OnInitializedAsync");
+            Toast.ShowError("Error inesperado");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task HandleValidar()
+    {
+        if (string.IsNullOrEmpty(SelectedEntradaId) || string.IsNullOrEmpty(SelectedDispositivoId))
+        {
+            Toast.ShowError("Selecciona una entrada y un dispositivo");
+            return;
+        }
+
+        IsValidating = true;
+
+        try
+        {
+            var request = new
+            {
+                IdEntrada = int.Parse(SelectedEntradaId),
+                IdDispositivo = int.Parse(SelectedDispositivoId)
+            };
+
+            var response = await HttpClient.PostAsJsonAsync("api/Validacion/validar-acceso", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Toast.ShowSuccess("Entrada validada correctamente.");
+                // Recargar la lista para que la entrada desaparezca
+                Entradas.RemoveAll(e => e.Id.ToString() == SelectedEntradaId);
+                SelectedEntradaId = "";
+                SelectedDispositivoId = "";
+            }
+            else
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Toast.ShowError("No se pudo validar la entrada.");
+                Logger.LogWarning("Error validando: {Status} - {Content}", response.StatusCode, content);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al validar entrada");
+            Toast.ShowError("Error inesperado al validar");
         }
         finally
         {
             IsValidating = false;
-            QrCode = "";
         }
-    }
-
-    private record ValidationResponse(
-        bool Success,
-        string Message);
-
-    private record ValidationRecord
-    {
-        public string QrCode { get; set; } = "";
-        public bool Success { get; set; }
-        public DateTime Timestamp { get; set; }
     }
 }

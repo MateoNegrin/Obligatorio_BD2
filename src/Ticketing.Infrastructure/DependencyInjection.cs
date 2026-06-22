@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IEntradaRepository, EntradaRepository>();
         services.AddScoped<ITransferenciaRepository, TransferenciaRepository>();
         services.AddScoped<IMetricaRepository, MetricaRepository>();
+        services.AddScoped<IDispositivoRepository, DispositivoRepository>();
 
         return services;
     }

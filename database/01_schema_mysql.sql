@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS entrada (
     estado                         VARCHAR(50) NOT NULL,
     fecha                          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     estado_seed                    VARCHAR(100),
-    qr_usado                       TINYINT(1) NOT NULL DEFAULT 0,
+    qr_usado                       VARCHAR(255),
     costo                          DECIMAL(12, 2) NOT NULL,
     id_sector                      INT NOT NULL,
     id_evento_deportivo            INT NOT NULL,
@@ -180,3 +180,11 @@ CREATE TABLE IF NOT EXISTS transferencia (
     FOREIGN KEY (numero_documento_receptor) REFERENCES usuario (numero_documento),
     FOREIGN KEY (id_entrada) REFERENCES entrada (id)
 );
+
+
+CREATE INDEX idx_entrada_evento    ON entrada(id_evento_deportivo);
+CREATE INDEX idx_entrada_venta     ON entrada(id_venta);
+CREATE INDEX idx_venta_usuario     ON venta(numero_documento_usuario);
+CREATE INDEX idx_transf_entrada    ON transferencia(id_entrada);
+CREATE INDEX idx_transf_receptor   ON transferencia(numero_documento_receptor);
+CREATE INDEX idx_evento_fecha      ON evento_deportivo(fecha);

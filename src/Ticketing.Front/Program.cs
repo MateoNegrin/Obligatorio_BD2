@@ -29,6 +29,7 @@ builder.Services.AddScoped<UsuariosApiClient>();
 builder.Services.AddScoped<MetricasApiClient>();
 builder.Services.AddScoped<EntradasApiClient>();
 builder.Services.AddScoped<TransferenciasApiClient>();
+builder.Services.AddScoped<DispositivosApiClient>();
 
 // Toasts (notificaciones flotantes)
 builder.Services.AddScoped<ToastService>();

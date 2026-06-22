@@ -10,4 +10,6 @@ public interface IEntradaRepository
     // Devuelve null si la entrada no existe.
     Task<string?> GetPropietarioActualAsync(int idEntrada, CancellationToken ct = default);
     Task MarcarConsumidaAsync(int id, CancellationToken ct = default);
+    Task ValidarEntradaAsync(int id, string codigoQr, int idDispositivo, CancellationToken ct = default);
+    Task<IReadOnlyList<Entrada>> GetSinValidarAsync(CancellationToken ct = default);
 }
