@@ -24,7 +24,7 @@ La base de datos remota está preconfigurada en `src/Ticketing.Api/appsettings.j
 
 ```json
 "ConnectionStrings": {
-  "MySQL": "Server=mysql.reto-ucu.net;Port=50006;Database=IC_Grupo3;Uid=ic_g3_admin;Pwd=BD2ObligatorioG32026;"
+  "MySQL": "Server=mysql.reto-ucu.net;Port=50006;Database=IC_Grupo3;Uid=ic_g3_admin;Pwd=BD2026;"
 }
 ```
 
