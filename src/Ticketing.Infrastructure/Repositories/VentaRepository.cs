@@ -148,8 +148,8 @@ public sealed class VentaRepository : IVentaRepository
             {
                 await using var cmdEntrada = new MySqlCommand(
                     """
-                    INSERT INTO entrada (estado, fecha, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, qr_usado)
-                    VALUES (@estado, @fecha, @costo, @idSector, @idEvento, @numeroDocumentoAdmin, @idVenta, 0);
+                    INSERT INTO entrada (estado, fecha, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, qr_usado, numero_documento_propietario_actual)
+                    VALUES (@estado, @fecha, @costo, @idSector, @idEvento, @numeroDocumentoAdmin, @idVenta, NULL, @propietario);
                     SELECT LAST_INSERT_ID();
                     """,
                     mysqlConn,
@@ -162,6 +162,8 @@ public sealed class VentaRepository : IVentaRepository
                 cmdEntrada.Parameters.AddWithValue("@idEvento", entrada.IdEventoDeportivo);
                 cmdEntrada.Parameters.AddWithValue("@numeroDocumentoAdmin", (object?)entrada.NumeroDocumentoAdministrador ?? DBNull.Value);
                 cmdEntrada.Parameters.AddWithValue("@idVenta", ventaId);
+                // El comprador queda como dueño actual de la entrada al momento de la compra.
+                cmdEntrada.Parameters.AddWithValue("@propietario", venta.NumeroDocumentoUsuario);
 
                 entrada.Id = Convert.ToInt32(await cmdEntrada.ExecuteScalarAsync(ct));
             }

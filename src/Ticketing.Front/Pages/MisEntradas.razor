@@ -44,7 +44,12 @@
                         </p>
                     </div>
                     <div>
-                        <button class="btn btn-primary" @onclick="() => IniciarTransferencia(entrada.Id)" disabled="@(TransfiriendoEntradaId == entrada.Id)">
+                        @{
+                            var esTransferible = entrada.Estado is not ("Validada" or "Anulada");
+                        }
+                        <button class="btn btn-primary" @onclick="() => IniciarTransferencia(entrada.Id)"
+                                disabled="@(TransfiriendoEntradaId == entrada.Id || !esTransferible)"
+                                title="@(esTransferible ? null : $"Una entrada en estado '{entrada.Estado}' no se puede transferir.")">
                             Transferir
                         </button>
                     </div>

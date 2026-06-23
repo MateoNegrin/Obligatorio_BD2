@@ -21,14 +21,6 @@ public sealed class TransferenciasController : ControllerBase
         return Accepted();
     }
 
-    [HttpPost("aceptar")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Aceptar(AceptarTransferenciaRequest request, CancellationToken ct)
-    {
-        await _service.AceptarAsync(request, ct);
-        return NoContent();
-    }
-
     [HttpGet("entrada/{idEntrada:int}/historial")]
     [ProducesResponseType(typeof(IReadOnlyList<TransferenciaResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHistorial(int idEntrada, CancellationToken ct)
