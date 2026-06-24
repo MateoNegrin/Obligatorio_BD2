@@ -1,5 +1,6 @@
 @page "/login"
 @using Microsoft.AspNetCore.Components.Authorization
+@using Ticketing.Front.Utils
 
 @inject FirebaseAuthenticationService AuthService
 @inject NavigationManager NavManager
@@ -88,16 +89,24 @@
             return;
         }
 
+        // Sanitizar email
+        var emailSanitizado = InputSanitizer.SanitizeEmail(Email);
+        if (string.IsNullOrEmpty(emailSanitizado))
+        {
+            ErrorMessage = "El correo ingresado no es válido";
+            return;
+        }
+
         IsLoading = true;
         ErrorMessage = null;
 
         try
         {
-            var (success, error) = await AuthService.LoginAsync(Email, Password);
+            var (success, error) = await AuthService.LoginAsync(emailSanitizado, Password);
 
             if (success)
             {
-                Logger.LogInformation("Login exitoso para: {Email}", Email);
+                Logger.LogInformation("Login exitoso para: {Email}", emailSanitizado);
                 
                 // Obtener el rol del usuario
                 var roleResponse = await AuthService.GetUserRoleAsync();
@@ -108,7 +117,7 @@
                 if (state.IsAuthenticated && !string.IsNullOrEmpty(state.UserId))
                 {
                     var authProvider = AuthStateProvider as Ticketing.Front.Authentication.FirebaseAuthenticationStateProvider;
-                    authProvider?.NotifyUserAuthenticated(state.UserId, state.Email ?? Email, role);
+                    authProvider?.NotifyUserAuthenticated(state.UserId, state.Email ?? emailSanitizado, role);
                 }
                 
                 NavManager.NavigateTo("/");

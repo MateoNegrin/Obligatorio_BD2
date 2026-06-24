@@ -1,6 +1,7 @@
 @page "/signup"
 @using Microsoft.AspNetCore.Components.Authorization
 @using Ticketing.Front.Services
+@using Ticketing.Front.Utils
 @inject FirebaseAuthenticationService AuthService
 @inject NavigationManager NavManager
 @inject ILogger<Signup> Logger
@@ -198,33 +199,50 @@
             return;
         }
 
+        // Sanitizar documento y email
+        var documentoSanitizado = InputSanitizer.SanitizeNumeric(NumeroDocumento);
+        var emailSanitizado = InputSanitizer.SanitizeEmail(Email);
+
+        if (string.IsNullOrEmpty(documentoSanitizado) || string.IsNullOrEmpty(emailSanitizado))
+        {
+            ErrorMessage = "El número de documento o correo ingresado no es válido";
+            return;
+        }
+
+        // Sanitizar campos opcionales de dirección
+        var paisSanitizado = InputSanitizer.Sanitize(Pais) ?? string.Empty;
+        var localidadSanitizada = InputSanitizer.Sanitize(Localidad) ?? string.Empty;
+        var calleSanitizada = InputSanitizer.Sanitize(Calle) ?? string.Empty;
+        var numeroDireccionSanitizado = InputSanitizer.SanitizeNumeric(NumeroDireccion) ?? string.Empty;
+        var codigoPostalSanitizado = InputSanitizer.SanitizeNumeric(CodigoPostal) ?? string.Empty;
+
         IsLoading = true;
         ErrorMessage = null;
 
         try
         {
             var request = new SignUpCompleteRequest(
-                NumeroDocumento.Trim(),
-                Email.Trim(),
+                documentoSanitizado,
+                emailSanitizado,
                 Password,
-                Pais?.Trim() ?? string.Empty,
-                Localidad?.Trim() ?? string.Empty,
-                Calle?.Trim() ?? string.Empty,
-                NumeroDireccion?.Trim() ?? string.Empty,
-                CodigoPostal?.Trim() ?? string.Empty);
+                paisSanitizado,
+                localidadSanitizada,
+                calleSanitizada,
+                numeroDireccionSanitizado,
+                codigoPostalSanitizado);
 
             var (success, error) = await AuthService.SignUpCompleteAsync(request);
 
             if (success)
             {
-                Logger.LogInformation("Registro exitoso para: {Email}", Email);
+                Logger.LogInformation("Registro exitoso para: {Email}", emailSanitizado);
                 
                 // Notificar al AuthenticationStateProvider
                 var state = AuthService.GetCurrentState();
                 if (state.IsAuthenticated && !string.IsNullOrEmpty(state.UserId))
                 {
                     var authProvider = AuthStateProvider as Ticketing.Front.Authentication.FirebaseAuthenticationStateProvider;
-                    authProvider?.NotifyUserAuthenticated(state.UserId, state.Email ?? Email);
+                    authProvider?.NotifyUserAuthenticated(state.UserId, state.Email ?? emailSanitizado);
                 }
                 
                 NavManager.NavigateTo("/");
