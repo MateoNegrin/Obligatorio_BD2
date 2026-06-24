@@ -96,7 +96,7 @@ public sealed class UsuarioRepository : IUsuarioRepository
         return null;
     }
 
-    public async Task CreateAsync(Usuario usuario, CancellationToken ct = default)
+    public async Task CreateAsync(Usuario usuario, IReadOnlyList<string> telefonos = default, CancellationToken ct = default)
     {
         await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(
@@ -110,6 +110,22 @@ public sealed class UsuarioRepository : IUsuarioRepository
         cmd.Parameters.AddWithValue("@numero_direccion", usuario.NumeroDireccion);
         cmd.Parameters.AddWithValue("@codigo_postal", usuario.CodigoPostal);
         await cmd.ExecuteNonQueryAsync(ct);
+
+        // Insertar teléfonos si se proporcionan
+        if (telefonos != null && telefonos.Count > 0)
+        {
+            foreach (var telefono in telefonos)
+            {
+                if (string.IsNullOrWhiteSpace(telefono)) continue;
+                
+                await using var cmdTel = new MySqlCommand(
+                    "INSERT INTO telefono (usuario_numero_documento, telefono) VALUES (@usuario_numero_documento, @telefono)",
+                    (MySqlConnection)conn);
+                cmdTel.Parameters.AddWithValue("@usuario_numero_documento", usuario.NumeroDocumento);
+                cmdTel.Parameters.AddWithValue("@telefono", telefono);
+                await cmdTel.ExecuteNonQueryAsync(ct);
+            }
+        }
     }
 
     public async Task UpdateAsync(Usuario usuario, CancellationToken ct = default)

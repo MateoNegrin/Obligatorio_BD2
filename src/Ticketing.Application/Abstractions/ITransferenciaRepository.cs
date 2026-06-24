@@ -7,4 +7,5 @@ public interface ITransferenciaRepository
     Task<IReadOnlyList<Transferencia>> GetHistorialAsync(int idEntrada, CancellationToken ct = default);
     Task<int> ContarTransferenciasAsync(int idEntrada, CancellationToken ct = default);
     Task CreateAsync(Transferencia transferencia, CancellationToken ct = default);
+    Task<IReadOnlyList<Transferencia>> GetByUsuarioAsync(string numeroDocumento, CancellationToken ct = default);
 }

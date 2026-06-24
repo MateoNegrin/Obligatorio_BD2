@@ -1,0 +1,117 @@
+@page "/transferencias"
+@using Ticketing.Contracts.Transferencias
+@using Ticketing.Contracts.Entradas
+@using Ticketing.Front.ApiClients
+@inject HttpClient Http
+@inject FirebaseAuthenticationService AuthService
+@inject TransferenciasApiClient TransferenciasClient
+
+<PageTitle>Transferencias</PageTitle>
+
+<h1>Historial de Transferencias</h1>
+
+@if (_error is not null)
+{
+    <p style="color:red">@_error</p>
+}
+else if (_transferencias is null)
+{
+    <p>Cargando...</p>
+}
+else if (_transferencias.Count == 0)
+{
+    <p class="text-muted">No tienes transferencias registradas.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID Entrada</th>
+                <th>Evento</th>
+                <th>Documento Usuario Receptor</th>
+                <th>Tipo</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var trans in _transferencias)
+        {
+            var entrada = _entradasMap.ContainsKey(trans.IdEntrada) ? _entradasMap[trans.IdEntrada] : null;
+            
+            <tr>
+                <td>#@trans.IdEntrada</td>
+                <td>@(entrada != null ? (entrada.NombreLocal + " vs " + entrada.NombreVisitante) : "N/A")</td>
+                <td>@trans.NumeroDocumentoReceptor</td>
+                <td>@(_miDocumento == trans.NumeroDocumentoEmisor ? "Enviaste" : "Recibiste")</td>
+                <td>@trans.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<TransferenciaResponse>? _transferencias;
+    private string? _error;
+    private string? _miDocumento;
+    private Dictionary<int, EntradaResponse> _entradasMap = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var role = await AuthService.GetUserRoleAsync();
+        if (role is null || string.IsNullOrEmpty(role.NumeroDocumento))
+        {
+            _error = "No se pudo identificar tu usuario.";
+            return;
+        }
+
+        _miDocumento = role.NumeroDocumento;
+
+        try
+        {
+            // Obtener todas las transferencias del usuario (como emisor o receptor)
+            _transferencias = (await Http.GetFromJsonAsync<IReadOnlyList<TransferenciaResponse>>(
+                $"api/Transferencias/usuario/{role.NumeroDocumento}") ?? [])
+                .OrderByDescending(t => t.Fecha)
+                .ToList();
+
+            // Obtener todas las entradas del usuario para mapear información
+            var entradas = await Http.GetFromJsonAsync<IReadOnlyList<EntradaResponse>>(
+                $"api/Entradas/usuario/{role.NumeroDocumento}") ?? [];
+            
+            foreach (var entrada in entradas)
+            {
+                _entradasMap[entrada.Id] = entrada;
+            }
+
+            // Para las transferencias, también obtener las entradas asociadas
+            if (_transferencias.Count > 0)
+            {
+                var idEntradasTransferidas = _transferencias.Select(t => t.IdEntrada).Distinct().ToList();
+                
+                // Intentar obtener información de entradas que no están en el mapa
+                var entradasFaltantes = idEntradasTransferidas.Where(id => !_entradasMap.ContainsKey(id)).ToList();
+                
+                // Para cada entrada faltante, intentar obtenerla individualmente si existe endpoint
+                foreach (var idEntrada in entradasFaltantes)
+                {
+                    try
+                    {
+                        var entrada = await Http.GetFromJsonAsync<EntradaResponse>($"api/Entradas/{idEntrada}");
+                        if (entrada != null)
+                            _entradasMap[idEntrada] = entrada;
+                    }
+                    catch
+                    {
+                        // Si no se puede obtener, continuar
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al cargar tus transferencias: {ex.Message}";
+        }
+    }
+}

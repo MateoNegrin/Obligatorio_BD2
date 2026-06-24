@@ -11,26 +11,43 @@
 {
     <p style="color:red">@_error</p>
 }
-else if (_eventos is null)
+else if (_eventos is null || _compradores is null)
 {
     <p>Cargando...</p>
 }
 else
 {
-    <h2>Eventos más vendidos</h2>
-    <table class="table">
-        <thead><tr><th>Evento</th><th>Entradas vendidas</th></tr></thead>
-        <tbody>
-        @foreach (var e in _eventos)
-        {
-            <tr><td>@e.IdEventoDeportivo</td><td>@e.EntradasVendidas</td></tr>
-        }
-        </tbody>
-    </table>
+    <div class="row">
+        <div class="col-md-6">
+            <h2>Eventos más vendidos</h2>
+            <table class="table">
+                <thead><tr><th>Evento</th><th>Entradas vendidas</th></tr></thead>
+                <tbody>
+                @foreach (var e in _eventos)
+                {
+                    <tr><td>@e.IdEventoDeportivo</td><td>@e.EntradasVendidas</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="col-md-6">
+            <h2>Mayores compradores</h2>
+            <table class="table">
+                <thead><tr><th>Usuario</th><th>Email</th><th>Entradas Compradas</th></tr></thead>
+                <tbody>
+                @foreach (var c in _compradores)
+                {
+                    <tr><td>@c.NumeroDocumentoUsuario</td><td>@c.Mail</td><td>@c.EntradasCompradas</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
 }
 
 @code {
     private IReadOnlyList<EventoMasVendidoResponse>? _eventos;
+    private IReadOnlyList<MayorCompradorResponse>? _compradores;
     private string? _error;
 
     protected override async Task OnInitializedAsync()
@@ -38,6 +55,7 @@ else
         try
         {
             _eventos = await Client.GetEventosMasVendidosAsync();
+            _compradores = await Client.GetMayoresCompradoresAsync();
         }
         catch (Exception ex)
         {

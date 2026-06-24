@@ -9,6 +9,7 @@ public interface ITransferenciaService
     // Transferir entrada (máx. 3 transferencias antes de validar).
     Task TransferirAsync(TransferirEntradaRequest request, CancellationToken ct = default);
     Task<IReadOnlyList<TransferenciaResponse>> GetHistorialAsync(int idEntrada, CancellationToken ct = default);
+    Task<IReadOnlyList<TransferenciaResponse>> GetByUsuarioAsync(string numeroDocumento, CancellationToken ct = default);
 }
 
 public sealed class TransferenciaService : ITransferenciaService
@@ -59,6 +60,16 @@ public sealed class TransferenciaService : ITransferenciaService
     public async Task<IReadOnlyList<TransferenciaResponse>> GetHistorialAsync(int idEntrada, CancellationToken ct = default)
     {
         var transferencias = await _repository.GetHistorialAsync(idEntrada, ct);
+        return transferencias.Select(t => new TransferenciaResponse(
+            t.IdEntrada,
+            t.NumeroDocumentoEmisor,
+            t.NumeroDocumentoReceptor,
+            t.Fecha)).ToList();
+    }
+
+    public async Task<IReadOnlyList<TransferenciaResponse>> GetByUsuarioAsync(string numeroDocumento, CancellationToken ct = default)
+    {
+        var transferencias = await _repository.GetByUsuarioAsync(numeroDocumento, ct);
         return transferencias.Select(t => new TransferenciaResponse(
             t.IdEntrada,
             t.NumeroDocumentoEmisor,

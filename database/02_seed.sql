@@ -191,16 +191,16 @@ INSERT INTO informacion_entrada (id_sector, id_evento_deportivo, numero_document
 
 -- Ventas (compras de entradas)
 INSERT INTO venta (numero_documento_usuario, id_comision, monto_total) VALUES
-    ('12345678', 1, 2500.00),
-    ('87654321', 2, 3200.00),
-    ('11223344', 1, 2800.00),
-    ('44332211', 3, 4500.00),
-    ('55667788', 2, 3100.00),
-    ('88776655', 1, 2200.00),
-    ('99887766', 2, 2900.00),
-    ('66778899', 1, 2600.00),
-    ('12345678', 2, 3500.00),
-    ('11223344', 3, 4200.00);
+    ('12345678', 1, 500.00),
+    ('87654321', 2, 200.00),
+    ('11223344', 1, 300.00),
+    ('44332211', 3, 500.00),
+    ('55667788', 2, 100.00),
+    ('88776655', 1, 200.00),
+    ('99887766', 2, 400.00),
+    ('66778899', 1, 100.00),
+    ('12345678', 2, 500.00),
+    ('11223344', 3, 200.00);
 
 -- Estados de venta (vincular cada venta con estado)
 INSERT INTO venta_tiene_estado (id_venta, id_estado_venta) VALUES
