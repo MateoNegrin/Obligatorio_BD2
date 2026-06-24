@@ -335,3 +335,21 @@ code {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* ---- Bootstrap Icons en NavMenu ----------------------------------------- */
+.nav-link {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem;
+    line-height: 1.25;
+}
+
+.nav-link .bi {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 1.25em;
+    height: 1.25em;
+    flex-shrink: 0;
+    line-height: 1;
+}
