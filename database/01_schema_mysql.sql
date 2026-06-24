@@ -1,6 +1,5 @@
 -- =============================================================================
 -- Ticketing Mundial 2026 — Esquema (DDL) - MySQL
--- Adaptado de PostgreSQL a MySQL
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -164,10 +163,12 @@ CREATE TABLE IF NOT EXISTS entrada (
     id_evento_deportivo            INT NOT NULL,
     numero_documento_administrador VARCHAR(30),
     id_venta                       INT NOT NULL,
+    numero_documento_propietario_actual VARCHAR(30) NOT NULL,
     FOREIGN KEY (id_sector) REFERENCES sector (id),
     FOREIGN KEY (id_evento_deportivo) REFERENCES evento_deportivo (id),
     FOREIGN KEY (numero_documento_administrador) REFERENCES administrador (numero_documento),
-    FOREIGN KEY (id_venta) REFERENCES venta (id)
+    FOREIGN KEY (id_venta) REFERENCES venta (id),
+    FOREIGN KEY (numero_documento_propietario_actual) REFERENCES usuario (numero_documento)
 );
 
 CREATE TABLE IF NOT EXISTS transferencia (
@@ -184,6 +185,7 @@ CREATE TABLE IF NOT EXISTS transferencia (
 
 CREATE INDEX idx_entrada_evento    ON entrada(id_evento_deportivo);
 CREATE INDEX idx_entrada_venta     ON entrada(id_venta);
+CREATE INDEX idx_entrada_propietario ON entrada(numero_documento_propietario_actual);
 CREATE INDEX idx_venta_usuario     ON venta(numero_documento_usuario);
 CREATE INDEX idx_transf_entrada    ON transferencia(id_entrada);
 CREATE INDEX idx_transf_receptor   ON transferencia(numero_documento_receptor);

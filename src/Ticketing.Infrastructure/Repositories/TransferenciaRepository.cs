@@ -46,15 +46,37 @@ public sealed class TransferenciaRepository : ITransferenciaRepository
         return Convert.ToInt32(result);
     }
 
+    // Registra la transferencia y traspasa la propiedad de la entrada al receptor.
+    // Ambas operaciones van en una transacción: o se aplican las dos, o ninguna.
     public async Task CreateAsync(Transferencia transferencia, CancellationToken ct = default)
     {
         await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
-        await using var cmd = new MySqlCommand(
-            "INSERT INTO transferencia (numero_documento_emisor, numero_documento_receptor, id_entrada, fecha) VALUES (@numero_documento_emisor, @numero_documento_receptor, @id_entrada, NOW())",
-            (MySqlConnection)conn);
-        cmd.Parameters.AddWithValue("@numero_documento_emisor", transferencia.NumeroDocumentoEmisor);
-        cmd.Parameters.AddWithValue("@numero_documento_receptor", transferencia.NumeroDocumentoReceptor);
-        cmd.Parameters.AddWithValue("@id_entrada", transferencia.IdEntrada);
-        await cmd.ExecuteNonQueryAsync(ct);
+        var mysqlConn = (MySqlConnection)conn;
+        await using var transaction = await mysqlConn.BeginTransactionAsync(ct);
+
+        try
+        {
+            await using var cmdInsert = new MySqlCommand(
+                "INSERT INTO transferencia (numero_documento_emisor, numero_documento_receptor, id_entrada, fecha) VALUES (@numero_documento_emisor, @numero_documento_receptor, @id_entrada, NOW())",
+                mysqlConn, transaction);
+            cmdInsert.Parameters.AddWithValue("@numero_documento_emisor", transferencia.NumeroDocumentoEmisor);
+            cmdInsert.Parameters.AddWithValue("@numero_documento_receptor", transferencia.NumeroDocumentoReceptor);
+            cmdInsert.Parameters.AddWithValue("@id_entrada", transferencia.IdEntrada);
+            await cmdInsert.ExecuteNonQueryAsync(ct);
+
+            await using var cmdUpdate = new MySqlCommand(
+                "UPDATE entrada SET numero_documento_propietario_actual = @receptor WHERE id = @id_entrada",
+                mysqlConn, transaction);
+            cmdUpdate.Parameters.AddWithValue("@receptor", transferencia.NumeroDocumentoReceptor);
+            cmdUpdate.Parameters.AddWithValue("@id_entrada", transferencia.IdEntrada);
+            await cmdUpdate.ExecuteNonQueryAsync(ct);
+
+            await transaction.CommitAsync(ct);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
     }
 }

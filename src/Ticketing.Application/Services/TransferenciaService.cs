@@ -8,7 +8,6 @@ public interface ITransferenciaService
 {
     // Transferir entrada (máx. 3 transferencias antes de validar).
     Task TransferirAsync(TransferirEntradaRequest request, CancellationToken ct = default);
-    Task AceptarAsync(AceptarTransferenciaRequest request, CancellationToken ct = default);
     Task<IReadOnlyList<TransferenciaResponse>> GetHistorialAsync(int idEntrada, CancellationToken ct = default);
 }
 
@@ -29,12 +28,18 @@ public sealed class TransferenciaService : ITransferenciaService
         if (request.NumeroDocumentoEmisor == request.NumeroDocumentoReceptor)
             throw new InvalidOperationException("No se puede transferir una entrada a uno mismo.");
 
-        // Validar que el emisor sea el dueño actual de la entrada
-        var propietarioActual = await _entradaRepository.GetPropietarioActualAsync(request.IdEntrada, ct);
-        if (propietarioActual is null)
+        // La entrada debe existir.
+        var entrada = await _entradaRepository.GetByIdAsync(request.IdEntrada, ct);
+        if (entrada is null)
             throw new InvalidOperationException($"La entrada {request.IdEntrada} no existe.");
-        if (propietarioActual != request.NumeroDocumentoEmisor)
+
+        // Solo el dueño actual puede transferirla.
+        if (entrada.NumeroDocumentoPropietarioActual != request.NumeroDocumentoEmisor)
             throw new InvalidOperationException("Solo el dueño actual de la entrada puede transferirla.");
+
+        // Una entrada ya validada (leída por el supervisor) o anulada no se puede transferir.
+        if (entrada.Estado is "Validada" or "Anulada")
+            throw new InvalidOperationException($"No se puede transferir una entrada en estado '{entrada.Estado}'.");
 
         // Validar que no supere 3 transferencias
         var cantTransferencias = await _repository.ContarTransferenciasAsync(request.IdEntrada, ct);
@@ -49,17 +54,6 @@ public sealed class TransferenciaService : ITransferenciaService
             Fecha = DateTime.UtcNow
         };
         await _repository.CreateAsync(transferencia, ct);
-    }
-
-    public async Task AceptarAsync(AceptarTransferenciaRequest request, CancellationToken ct = default)
-    {
-        // Validar que la entrada existe
-        var entrada = await _entradaRepository.GetByIdAsync(request.IdEntrada, ct);
-        if (entrada is null)
-            throw new InvalidOperationException($"La entrada {request.IdEntrada} no existe.");
-
-        // Marcar entrada como consumida (QR usado) para el nuevo propietario
-        await _entradaRepository.MarcarConsumidaAsync(request.IdEntrada, ct);
     }
 
     public async Task<IReadOnlyList<TransferenciaResponse>> GetHistorialAsync(int idEntrada, CancellationToken ct = default)
