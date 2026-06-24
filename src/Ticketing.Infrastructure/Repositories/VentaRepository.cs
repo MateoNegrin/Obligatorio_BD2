@@ -148,8 +148,8 @@ public sealed class VentaRepository : IVentaRepository
             {
                 await using var cmdEntrada = new MySqlCommand(
                     """
-                    INSERT INTO entrada (estado, fecha, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, qr_usado, numero_documento_propietario_actual)
-                    VALUES (@estado, @fecha, @costo, @idSector, @idEvento, @numeroDocumentoAdmin, @idVenta, NULL, @propietario);
+                    INSERT INTO entrada (estado, fecha, estado_seed, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, qr_usado, numero_documento_propietario_actual)
+                    VALUES (@estado, @fecha, @estadoSeed, @costo, @idSector, @idEvento, @numeroDocumentoAdmin, @idVenta, NULL, @propietario);
                     SELECT LAST_INSERT_ID();
                     """,
                     mysqlConn,
@@ -157,6 +157,7 @@ public sealed class VentaRepository : IVentaRepository
 
                 cmdEntrada.Parameters.AddWithValue("@estado", entrada.Estado);
                 cmdEntrada.Parameters.AddWithValue("@fecha", entrada.Fecha);
+                cmdEntrada.Parameters.AddWithValue("@estadoSeed", entrada.EstadoSeed ?? string.Empty);
                 cmdEntrada.Parameters.AddWithValue("@costo", entrada.Costo);
                 cmdEntrada.Parameters.AddWithValue("@idSector", entrada.IdSector);
                 cmdEntrada.Parameters.AddWithValue("@idEvento", entrada.IdEventoDeportivo);
