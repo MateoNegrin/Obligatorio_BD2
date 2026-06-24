@@ -56,4 +56,19 @@ public sealed class UsuariosController : ControllerBase
         await _service.DeleteAsync(numeroDocumento, ct);
         return NoContent();
     }
+
+    // Estado de verificación de identidad: true si el usuario ya fue validado.
+    [HttpGet("{numeroDocumento}/identidad")]
+    [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetIdentidadVerificada(string numeroDocumento, CancellationToken ct)
+        => Ok(await _service.IsIdentidadVerificadaAsync(numeroDocumento, ct));
+
+    // Marca la identidad del usuario como Verificada.
+    [HttpPost("{numeroDocumento}/identidad/verificar")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> VerificarIdentidad(string numeroDocumento, CancellationToken ct)
+    {
+        await _service.VerificarIdentidadAsync(numeroDocumento, ct);
+        return NoContent();
+    }
 }

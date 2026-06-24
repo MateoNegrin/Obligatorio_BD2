@@ -11,7 +11,27 @@
 
     <main>
         <div class="top-row px-4 d-flex justify-content-between align-items-center">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            <div class="d-flex gap-3 align-items-center">
+                <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+                @if (_mostrarVerificacion)
+                {
+                    @if (_identidadVerificada)
+                    {
+                        <button class="btn btn-sm btn-success" disabled>Verificar Identidad</button>
+                        <span class="text-success small fw-semibold">El usuario ya fue validado!</span>
+                    }
+                    else
+                    {
+                        <button class="btn btn-sm btn-outline-primary" @onclick="HandleVerificarIdentidad" disabled="@_verificando">
+                            @if (_verificando)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            }
+                            Verificar Identidad
+                        </button>
+                    }
+                }
+            </div>
             <AuthorizeView>
                 <Authorized>
                     <div class="d-flex gap-2 align-items-center">
@@ -34,15 +54,68 @@
 
 <ToastContainer />
 
+@implements IDisposable
 @code {
+    private bool _mostrarVerificacion;   // solo usuarios General
+    private bool _identidadVerificada;
+    private bool _verificando;
+    private string? _numeroDocumento;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
+        await CargarEstadoIdentidad();
+    }
+
+    private async void OnAuthStateChanged(Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> task)
+    {
+        await CargarEstadoIdentidad();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+        => AuthStateProvider.AuthenticationStateChanged -= OnAuthStateChanged;
+
+    private async Task CargarEstadoIdentidad()
+    {
+        _mostrarVerificacion = false;
+        _identidadVerificada = false;
+        _numeroDocumento = null;
+
+        var userRole = await AuthService.GetUserRoleAsync();
+        if (userRole is null || !string.Equals(userRole.Role, "General", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _numeroDocumento = userRole.NumeroDocumento;
+        _mostrarVerificacion = true;
+        _identidadVerificada = await AuthService.GetIdentidadVerificadaAsync(_numeroDocumento);
+    }
+
+    private async Task HandleVerificarIdentidad()
+    {
+        if (string.IsNullOrEmpty(_numeroDocumento) || _verificando)
+            return;
+
+        _verificando = true;
+        try
+        {
+            if (await AuthService.VerificarIdentidadAsync(_numeroDocumento))
+                _identidadVerificada = true;
+        }
+        finally
+        {
+            _verificando = false;
+        }
+    }
+
     private async Task HandleLogout()
     {
         await AuthService.LogoutAsync();
-        
+
         // Notificar al AuthenticationStateProvider
         var authProvider = AuthStateProvider as Ticketing.Front.Authentication.FirebaseAuthenticationStateProvider;
         authProvider?.NotifyUserLoggedOut();
-        
+
         NavManager.NavigateTo("/login");
     }
 }
