@@ -6,6 +6,7 @@
 @using Ticketing.Contracts.Transferencias
 @using Ticketing.Front.ApiClients
 @using Ticketing.Front.Services
+@using Ticketing.Front.Utils
 @inject EntradasApiClient EntradasClient
 @inject UsuariosApiClient UsuariosClient
 @inject TransferenciasApiClient TransferenciasClient
@@ -58,30 +59,17 @@
                 @if (TransfiriendoEntradaId == entrada.Id)
                 {
                     <div class="card-body border-top">
-                        <label class="form-label">Transferir a</label>
-                        @if (Generales.Count == 0)
-                        {
-                            <p class="text-muted">No hay otros usuarios generales disponibles.</p>
-                        }
-                        else
-                        {
-                            <div class="d-flex flex-wrap gap-2 align-items-center">
-                                <select class="form-select" style="max-width: 360px;" @bind="ReceptorSeleccionado">
-                                    <option value="">Selecciona un usuario</option>
-                                    @foreach (var usuario in Generales)
-                                    {
-                                        <option value="@usuario.NumeroDocumento">@usuario.Mail (@usuario.NumeroDocumento)</option>
-                                    }
-                                </select>
-                                <button class="btn btn-primary" @onclick="() => ConfirmarTransferencia(entrada.Id)"
-                                        disabled="@(IsTransferring || string.IsNullOrEmpty(ReceptorSeleccionado))">
-                                    Confirmar
-                                </button>
-                                <button class="btn btn-outline-secondary" @onclick="CancelarTransferencia" disabled="@IsTransferring">
-                                    Cancelar
-                                </button>
-                            </div>
-                        }
+                        <label for="documento-transferencia" class="form-label">Transferir a</label>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <input type="text" class="form-control" id="documento-transferencia" style="max-width: 360px;" placeholder="Ingresá el número de documento del usuario" @bind="ReceptorSeleccionado" disabled="@IsTransferring" />
+                            <button class="btn btn-primary" @onclick="() => ConfirmarTransferencia(entrada.Id)"
+                                    disabled="@(IsTransferring || string.IsNullOrEmpty(ReceptorSeleccionado))">
+                                Confirmar
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick="CancelarTransferencia" disabled="@IsTransferring">
+                                Cancelar
+                            </button>
+                        </div>
                     </div>
                 }
             </div>
@@ -91,7 +79,6 @@
 
 @code {
     private List<EntradaResponse> Entradas = new();
-    private List<UsuarioResponse> Generales = new();
     private string? MiDocumento;
     private int? TransfiriendoEntradaId;
     private string ReceptorSeleccionado = "";
@@ -113,9 +100,6 @@
             }
 
             await CargarEntradasAsync();
-
-            var generales = await UsuariosClient.GetGeneralesAsync();
-            Generales = generales.Where(u => u.NumeroDocumento != MiDocumento).ToList();
         }
         catch (Exception ex)
         {
@@ -151,6 +135,14 @@
         if (string.IsNullOrEmpty(ReceptorSeleccionado) || string.IsNullOrEmpty(MiDocumento))
             return;
 
+        // Sanitizar el documento receptor
+        var documentoSanitizado = InputSanitizer.SanitizeNumeric(ReceptorSeleccionado);
+        if (string.IsNullOrEmpty(documentoSanitizado))
+        {
+            Toast.ShowError("El número de documento ingresado no es válido.");
+            return;
+        }
+
         IsTransferring = true;
 
         try
@@ -163,7 +155,7 @@
                 return;
             }
 
-            var request = new TransferirEntradaRequest(idEntrada, MiDocumento, ReceptorSeleccionado);
+            var request = new TransferirEntradaRequest(idEntrada, MiDocumento, documentoSanitizado);
             var error = await TransferenciasClient.TransferirAsync(request);
 
             if (error is null)

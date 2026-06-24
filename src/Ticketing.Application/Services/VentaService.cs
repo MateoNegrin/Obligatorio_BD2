@@ -41,7 +41,7 @@ public sealed class VentaService : IVentaService
         {
             Estado = "Disponible",
             Fecha = DateTime.UtcNow,
-            EstadoSeed = Guid.NewGuid().ToString("N"),
+            EstadoSeed = Random.Shared.Next(1000, 10000).ToString(),
             QrUsado = null,
             Costo = costoDefault,
             IdSector = item.IdSector,

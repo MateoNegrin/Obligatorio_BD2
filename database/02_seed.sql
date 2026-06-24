@@ -218,65 +218,65 @@ INSERT INTO entrada (estado, estado_seed, qr_usado, costo, id_sector, id_evento_
 
 -- Venta 2: 4 entradas para Argentina vs Brasil (evento 2, sector 5) — comprador 87654321
 INSERT INTO entrada (estado, estado_seed, qr_usado, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, numero_documento_propietario_actual) VALUES
-    ('Disponible', 'Seed', NULL, 800.00, 5, 2, 'ADM002', 2, '87654321'),
-    ('Disponible', 'Seed', NULL, 800.00, 5, 2, 'ADM002', 2, '87654321'),
-    ('Disponible', 'Seed', NULL, 800.00, 6, 2, 'ADM002', 2, '87654321'),
-    ('Disponible', 'Seed', NULL, 800.00, 6, 2, 'ADM002', 2, '87654321');
+    ('Disponible', '7990', NULL, 800.00, 5, 2, 'ADM002', 2, '87654321'),
+    ('Disponible', '7364', NULL, 800.00, 5, 2, 'ADM002', 2, '87654321'),
+    ('Disponible', '2850', NULL, 800.00, 6, 2, 'ADM002', 2, '87654321'),
+    ('Disponible', '9160', NULL, 800.00, 6, 2, 'ADM002', 2, '87654321');
 
 -- Venta 3: 3 entradas para Brasil vs Uruguay (evento 3, sector 8) — comprador 11223344
 INSERT INTO entrada (estado, estado_seed, qr_usado, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, numero_documento_propietario_actual) VALUES
-    ('Disponible', 'Seed', NULL, 700.00, 8, 3, 'ADM002', 3, '11223344'),
-    ('Disponible', 'Seed', NULL, 700.00, 8, 3, 'ADM002', 3, '11223344'),
-    ('Disponible', 'Seed', NULL, 700.00, 9, 3, 'ADM002', 3, '11223344');
+    ('Disponible', '9250', NULL, 700.00, 8, 3, 'ADM002', 3, '11223344'),
+    ('Disponible', '8772', NULL, 700.00, 8, 3, 'ADM002', 3, '11223344'),
+    ('Disponible', '6107', NULL, 700.00, 9, 3, 'ADM002', 3, '11223344');
 
 -- Venta 4: 5 entradas para España vs Francia (evento 4, sector 11-12) — comprador 44332211
 INSERT INTO entrada (estado, estado_seed, qr_usado, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, numero_documento_propietario_actual) VALUES
-    ('Disponible', 'Seed', NULL, 900.00, 11, 4, 'ADM002', 4, '44332211'),
-    ('Disponible', 'Seed', NULL, 900.00, 11, 4, 'ADM002', 4, '44332211'),
-    ('Disponible', 'Seed', NULL, 900.00, 12, 4, 'ADM002', 4, '44332211'),
-    ('Disponible', 'Seed', NULL, 900.00, 12, 4, 'ADM002', 4, '44332211'),
-    ('Disponible', 'Seed', NULL, 900.00, 13, 4, 'ADM002', 4, '44332211');
+    ('Disponible', '3223', NULL, 900.00, 11, 4, 'ADM002', 4, '44332211'),
+    ('Disponible', '5793', NULL, 900.00, 11, 4, 'ADM002', 4, '44332211'),
+    ('Disponible', '9296', NULL, 900.00, 12, 4, 'ADM002', 4, '44332211'),
+    ('Disponible', '1100', NULL, 900.00, 12, 4, 'ADM002', 4, '44332211'),
+    ('Disponible', '3615', NULL, 900.00, 13, 4, 'ADM002', 4, '44332211');
 
 -- Venta 5: 3 entradas para Alemania vs Italia (evento 5, sector 15) — comprador 55667788
 INSERT INTO entrada (estado, estado_seed, qr_usado, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, numero_documento_propietario_actual) VALUES
-    ('Disponible', 'Seed', NULL, 620.00, 15, 5, 'ADM003', 5, '55667788'),
-    ('Disponible', 'Seed', NULL, 620.00, 15, 5, 'ADM003', 5, '55667788'),
-    ('Disponible', 'Seed', NULL, 620.00, 16, 5, 'ADM003', 5, '55667788');
+    ('Disponible', '4773', NULL, 620.00, 15, 5, 'ADM003', 5, '55667788'),
+    ('Disponible', '3022', NULL, 620.00, 15, 5, 'ADM003', 5, '55667788'),
+    ('Disponible', '8792', NULL, 620.00, 16, 5, 'ADM003', 5, '55667788');
 
 -- Venta 6: 2 entradas para Portugal vs Uruguay (evento 6, sector 1-2) — comprador 88776655
 INSERT INTO entrada (estado, estado_seed, qr_usado, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, numero_documento_propietario_actual) VALUES
-    ('Disponible', 'Seed', NULL, 550.00, 1, 6, 'ADM001', 6, '88776655'),
-    ('Disponible', 'Seed', NULL, 550.00, 2, 6, 'ADM001', 6, '88776655');
+    ('Disponible', '6895', NULL, 550.00, 1, 6, 'ADM001', 6, '88776655'),
+    ('Disponible', '7098', NULL, 550.00, 2, 6, 'ADM001', 6, '88776655');
 
 -- Venta 7: 4 entradas para Argentina vs España (evento 7, sector 8) — comprador 99887766
 INSERT INTO entrada (estado, estado_seed, qr_usado, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, numero_documento_propietario_actual) VALUES
-    ('Disponible', 'Seed', NULL, 750.00, 8, 7, 'ADM002', 7, '99887766'),
-    ('Disponible', 'Seed', NULL, 750.00, 8, 7, 'ADM002', 7, '99887766'),
-    ('Disponible', 'Seed', NULL, 750.00, 9, 7, 'ADM002', 7, '99887766'),
-    ('Disponible', 'Seed', NULL, 750.00, 10, 7, 'ADM002', 7, '99887766');
+    ('Disponible', '4807', NULL, 750.00, 8, 7, 'ADM002', 7, '99887766'),
+    ('Disponible', '1742', NULL, 750.00, 8, 7, 'ADM002', 7, '99887766'),
+    ('Disponible', '2290', NULL, 750.00, 9, 7, 'ADM002', 7, '99887766'),
+    ('Disponible', '5611', NULL, 750.00, 10, 7, 'ADM002', 7, '99887766');
 
 -- Venta 8: 3 entradas para Brasil vs Alemania (evento 8, sector 15-16) — comprador 66778899
 INSERT INTO entrada (estado, estado_seed, qr_usado, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, numero_documento_propietario_actual) VALUES
-    ('Disponible', 'Seed', NULL, 680.00, 15, 8, 'ADM003', 8, '66778899'),
-    ('Disponible', 'Seed', NULL, 680.00, 16, 8, 'ADM003', 8, '66778899'),
-    ('Disponible', 'Seed', NULL, 680.00, 17, 8, 'ADM003', 8, '66778899');
+    ('Disponible', '3344', NULL, 680.00, 15, 8, 'ADM003', 8, '66778899'),
+    ('Disponible', '5566', NULL, 680.00, 16, 8, 'ADM003', 8, '66778899'),
+    ('Disponible', '7788', NULL, 680.00, 17, 8, 'ADM003', 8, '66778899');
 
 -- Venta 9: 5 entradas para Uruguay vs Argentina (evento 1, sector 3-4) — comprador 12345678
 INSERT INTO entrada (estado, estado_seed, qr_usado, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, numero_documento_propietario_actual) VALUES
-    ('Disponible', 'Seed', NULL, 500.00, 3, 1, 'ADM001', 9, '12345678'),
-    ('Disponible', 'Seed', NULL, 500.00, 3, 1, 'ADM001', 9, '12345678'),
-    ('Disponible', 'Seed', NULL, 500.00, 4, 1, 'ADM001', 9, '12345678'),
-    ('Disponible', 'Seed', NULL, 500.00, 4, 1, 'ADM001', 9, '12345678'),
-    ('Disponible', 'Seed', NULL, 500.00, 4, 1, 'ADM001', 9, '12345678');
+    ('Disponible', '1122', NULL, 500.00, 3, 1, 'ADM001', 9, '12345678'),
+    ('Disponible', '3344', NULL, 500.00, 3, 1, 'ADM001', 9, '12345678'),
+    ('Disponible', '5566', NULL, 500.00, 4, 1, 'ADM001', 9, '12345678'),
+    ('Disponible', '7788', NULL, 500.00, 4, 1, 'ADM001', 9, '12345678'),
+    ('Disponible', '9900', NULL, 500.00, 4, 1, 'ADM001', 9, '12345678');
 
 -- Venta 10: 6 entradas para Argentina vs Brasil (evento 2, sector 7) — comprador 11223344
 INSERT INTO entrada (estado, estado_seed, qr_usado, costo, id_sector, id_evento_deportivo, numero_documento_administrador, id_venta, numero_documento_propietario_actual) VALUES
-    ('Disponible', 'Seed', NULL, 800.00, 7, 2, 'ADM002', 10, '11223344'),
-    ('Disponible', 'Seed', NULL, 800.00, 7, 2, 'ADM002', 10, '11223344'),
-    ('Disponible', 'Seed', NULL, 800.00, 7, 2, 'ADM002', 10, '11223344'),
-    ('Disponible', 'Seed', NULL, 800.00, 7, 2, 'ADM002', 10, '11223344'),
-    ('Disponible', 'Seed', NULL, 800.00, 7, 2, 'ADM002', 10, '11223344'),
-    ('Disponible', 'Seed', NULL, 800.00, 7, 2, 'ADM002', 10, '11223344');
+    ('Disponible', '2185', NULL, 800.00, 7, 2, 'ADM002', 10, '11223344'),
+    ('Disponible', '4396', NULL, 800.00, 7, 2, 'ADM002', 10, '11223344'),
+    ('Disponible', '5617', NULL, 800.00, 7, 2, 'ADM002', 10, '11223344'),
+    ('Disponible', '6828', NULL, 800.00, 7, 2, 'ADM002', 10, '11223344'),
+    ('Disponible', '7949', NULL, 800.00, 7, 2, 'ADM002', 10, '11223344'),
+    ('Disponible', '9060', NULL, 800.00, 7, 2, 'ADM002', 10, '11223344');
 
 -- ---------------------------------------------------------------------------
 -- TRANSFERENCIAS (ejemplos de transferencias de entradas)

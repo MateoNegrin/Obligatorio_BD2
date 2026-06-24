@@ -5,6 +5,7 @@
 @using Ticketing.Contracts.Entradas
 @using Ticketing.Front.ApiClients
 @using Ticketing.Front.Services
+@using Ticketing.Front.Utils
 @inject HttpClient HttpClient
 @inject ILogger<QrScanner> Logger
 @inject FirebaseAuthenticationService AuthService
@@ -28,15 +29,7 @@
                     {
                         <div class="mb-3">
                             <label for="entrada" class="form-label">Entrada</label>
-                            <select class="form-select" id="entrada" @bind="SelectedEntradaId" disabled="@IsValidating">
-                                <option value="">Selecciona una entrada</option>
-                                @foreach (var entrada in Entradas)
-                                {
-                                    <option value="@entrada.Id">
-                                        #@entrada.Id — @entrada.NombreLocal vs @entrada.NombreVisitante · @entrada.FechaEvento.ToString("dd/MM/yyyy") · @entrada.NombreSector
-                                    </option>
-                                }
-                            </select>
+                            <input type="text" class="form-control" id="entrada" placeholder="Ingresá el ID de la entrada" @bind="SelectedEntradaId" disabled="@IsValidating" />
                         </div>
 
                         <div class="mb-3">
@@ -53,7 +46,7 @@
                         <button
                             class="btn btn-primary w-100"
                             @onclick="HandleValidar"
-                            disabled="@(IsValidating || string.IsNullOrEmpty(SelectedEntradaId) || string.IsNullOrEmpty(SelectedDispositivoId))">
+                            disabled="@(IsValidating || string.IsNullOrEmpty(SelectedEntradaId) || string.IsNullOrEmpty(SelectedDispositivoId) || !EsIdValido(SelectedEntradaId))">
                             @if (IsValidating)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -148,7 +141,15 @@
     {
         if (string.IsNullOrEmpty(SelectedEntradaId) || string.IsNullOrEmpty(SelectedDispositivoId))
         {
-            Toast.ShowError("Selecciona una entrada y un dispositivo");
+            Toast.ShowError("Por favor completa todos los campos");
+            return;
+        }
+
+        // Sanitizar el ID de entrada
+        var idSanitizado = InputSanitizer.SanitizeNumeric(SelectedEntradaId);
+        if (string.IsNullOrEmpty(idSanitizado) || !int.TryParse(idSanitizado, out var idEntrada))
+        {
+            Toast.ShowError("El ID de entrada ingresado no es válido.");
             return;
         }
 
@@ -158,7 +159,7 @@
         {
             var request = new
             {
-                IdEntrada = int.Parse(SelectedEntradaId),
+                IdEntrada = idEntrada,
                 IdDispositivo = int.Parse(SelectedDispositivoId)
             };
 
@@ -188,5 +189,10 @@
         {
             IsValidating = false;
         }
+    }
+
+    private bool EsIdValido(string id)
+    {
+        return int.TryParse(id, out _);
     }
 }
