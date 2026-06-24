@@ -25,4 +25,9 @@ public sealed class TransferenciasController : ControllerBase
     [ProducesResponseType(typeof(IReadOnlyList<TransferenciaResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHistorial(int idEntrada, CancellationToken ct)
         => Ok(await _service.GetHistorialAsync(idEntrada, ct));
+
+    [HttpGet("usuario/{numeroDocumento}")]
+    [ProducesResponseType(typeof(IReadOnlyList<TransferenciaResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetByUsuario(string numeroDocumento, CancellationToken ct)
+        => Ok(await _service.GetByUsuarioAsync(numeroDocumento, ct));
 }

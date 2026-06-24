@@ -75,7 +75,7 @@ public sealed class UsuarioService : IUsuarioService
             NumeroDireccion = request.NumeroDireccion,
             CodigoPostal = request.CodigoPostal
         };
-        await _repository.CreateAsync(usuario, ct);
+        await _repository.CreateAsync(usuario, request.Telefonos.ToList(), ct);
     }
 
     public async Task UpdateAsync(string numeroDocumento, ActualizarUsuarioRequest request, CancellationToken ct = default)

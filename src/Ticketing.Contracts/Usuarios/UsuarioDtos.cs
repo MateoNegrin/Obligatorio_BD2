@@ -17,7 +17,8 @@ public sealed record CrearUsuarioRequest(
     string Localidad,
     string Calle,
     string NumeroDireccion,
-    string CodigoPostal);
+    string CodigoPostal,
+    IReadOnlyList<string> Telefonos);
 
 public sealed record SignUpUsuarioRequest(
     string NumeroDocumento,

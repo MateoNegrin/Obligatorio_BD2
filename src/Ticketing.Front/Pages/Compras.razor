@@ -1,0 +1,97 @@
+@page "/compras"
+@using Ticketing.Contracts.Ventas
+@using Ticketing.Contracts.Entradas
+@using Ticketing.Front.ApiClients
+@inject HttpClient Http
+@inject FirebaseAuthenticationService AuthService
+
+<PageTitle>Mis Compras</PageTitle>
+
+<h1>Mis Compras</h1>
+
+@if (_error is not null)
+{
+    <p style="color:red">@_error</p>
+}
+else if (_compras is null)
+{
+    <p>Cargando...</p>
+}
+else if (_compras.Count == 0)
+{
+    <p class="text-muted">No tienes compras registradas.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Evento</th>
+                <th>Sector</th>
+                <th>Cantidad Entradas</th>
+                <th>Monto Total</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var venta in _compras)
+        {
+            var entradasDeEstaVenta = _entradasPorVenta.ContainsKey(venta.Id) 
+                ? _entradasPorVenta[venta.Id] 
+                : new List<EntradaResponse>();
+            
+            var primeraEntrada = entradasDeEstaVenta.FirstOrDefault();
+            var cantidad = (int)(venta.MontoTotal / 100);
+            
+            <tr>
+                <td>@venta.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+                <td>@(primeraEntrada != null ? $"{primeraEntrada.NombreLocal} vs {primeraEntrada.NombreVisitante}" : "N/A")</td>
+                <td>@(primeraEntrada?.NombreSector ?? "-")</td>
+                <td>@cantidad</td>
+                <td>$@venta.MontoTotal.ToString("F2")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<VentaResponse>? _compras;
+    private string? _error;
+    private Dictionary<int, List<EntradaResponse>> _entradasPorVenta = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var role = await AuthService.GetUserRoleAsync();
+        if (role is null || string.IsNullOrEmpty(role.NumeroDocumento))
+        {
+            _error = "No se pudo identificar tu usuario.";
+            return;
+        }
+
+        try
+        {
+            // Obtener entradas del usuario
+            var entradas = await Http.GetFromJsonAsync<IReadOnlyList<EntradaResponse>>(
+                $"api/Entradas/usuario/{role.NumeroDocumento}") ?? [];
+            
+            // Mapear entradas por IdVenta
+            foreach (var entrada in entradas)
+            {
+                if (!_entradasPorVenta.ContainsKey(entrada.IdVenta))
+                {
+                    _entradasPorVenta[entrada.IdVenta] = new List<EntradaResponse>();
+                }
+                _entradasPorVenta[entrada.IdVenta].Add(entrada);
+            }
+
+            // Obtener compras del usuario
+            _compras = await Http.GetFromJsonAsync<IReadOnlyList<VentaResponse>>(
+                $"api/Ventas/usuario/{role.NumeroDocumento}") ?? [];
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al cargar tus compras: {ex.Message}";
+        }
+    }
+}

@@ -20,7 +20,8 @@ public sealed record SignUpCompleteRequest(
     string Localidad,
     string Calle,
     string NumeroDireccion,
-    string CodigoPostal);
+    string CodigoPostal,
+    IReadOnlyList<string> Telefonos);
 
 public sealed record UserRoleResponse(
     string NumeroDocumento,
@@ -204,7 +205,8 @@ public sealed class FirebaseAuthenticationService : IAuthenticationService
                     request.Localidad,
                     request.Calle,
                     request.NumeroDireccion,
-                    request.CodigoPostal
+                    request.CodigoPostal,
+                    Telefonos = request.Telefonos.ToList()
                 };
 
                 var response = await _httpClient.PostAsJsonAsync("api/Usuarios", crearUsuarioRequest);

@@ -109,7 +109,44 @@
                                 disabled="@IsLoading" />
                         </div>
 
-                        <!-- Fila 5: Contraseña -->
+                        <!-- Fila 5: Teléfonos -->
+                        <div class="mb-3">
+                            <label class="form-label">Teléfonos de Contacto</label>
+                            @foreach (var (telefono, idx) in Telefonos.Select((t, i) => (t, i)))
+                            {
+                                <div class="row g-2 mb-2">
+                                    <div class="col">
+                                        <input
+                                            type="tel"
+                                            class="form-control"
+                                            @bind="Telefonos[idx]"
+                                            placeholder="Ej: 098123456"
+                                            disabled="@IsLoading" />
+                                    </div>
+                                    @if (Telefonos.Count > 1)
+                                    {
+                                        <div class="col-auto">
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-danger"
+                                                @onclick="() => EliminarTelefono(idx)"
+                                                disabled="@IsLoading">
+                                                ✕
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                @onclick="AgregarTelefono"
+                                disabled="@IsLoading">
+                                + Agregar teléfono
+                            </button>
+                        </div>
+
+                        <!-- Fila 6: Contraseña -->
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="password" class="form-label">Contraseña *</label>
@@ -175,6 +212,17 @@
     private string ConfirmPassword = string.Empty;
     private string? ErrorMessage;
     private bool IsLoading;
+    private List<string> Telefonos = new() { string.Empty };
+
+    private void AgregarTelefono() => Telefonos.Add(string.Empty);
+
+    private void EliminarTelefono(int index)
+    {
+        if (Telefonos.Count > 1)
+        {
+            Telefonos.RemoveAt(index);
+        }
+    }
 
     private async Task HandleSignup()
     {
@@ -216,6 +264,13 @@
         var numeroDireccionSanitizado = InputSanitizer.SanitizeNumeric(NumeroDireccion) ?? string.Empty;
         var codigoPostalSanitizado = InputSanitizer.SanitizeNumeric(CodigoPostal) ?? string.Empty;
 
+        // Sanitizar y filtrar teléfonos (solo mantener los no vacíos)
+        var telefonosSanitizados = Telefonos
+            .Select(t => InputSanitizer.SanitizeNumeric(t))
+            .Where(t => !string.IsNullOrEmpty(t))
+            .Cast<string>()
+            .ToList();
+
         IsLoading = true;
         ErrorMessage = null;
 
@@ -229,7 +284,8 @@
                 localidadSanitizada,
                 calleSanitizada,
                 numeroDireccionSanitizado,
-                codigoPostalSanitizado);
+                codigoPostalSanitizado,
+                telefonosSanitizados);
 
             var (success, error) = await AuthService.SignUpCompleteAsync(request);
 

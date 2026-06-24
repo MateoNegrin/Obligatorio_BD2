@@ -73,6 +73,9 @@ else
                     @if (_editId is null)
                     {
                         <p class="text-muted">El estadio se crea en tu sede asignada con 4 sectores. La capacidad se calcula sumando las capacidades de los sectores.</p>
+                        <div class="alert alert-info mb-3">
+                            <strong>Sede:</strong> @_miSede
+                        </div>
                     }
                     else
                     {
@@ -80,7 +83,7 @@ else
                     }
 
                     <div class="mb-3">
-                        <label class="form-label">Ubicación</label>
+                        <label class="form-label">Nombre</label>
                         <input class="form-control" @bind="_ubicacion" />
                     </div>
 
@@ -114,6 +117,7 @@ else
     private string? _error;
     private bool _esAdmin;
     private string? _miDocumento;
+    private string _miSede = "Cargando...";
 
     private bool _showModal;
     private bool _saving;
@@ -134,6 +138,17 @@ else
         try
         {
             _estadios = await Client.GetAllAsync();
+            
+            // Obtener el nombre de la sede del primer estadio que encuentre
+            if (_estadios.Any())
+            {
+                _miSede = _estadios.First().NombreSede;
+            }
+            else
+            {
+                _miSede = "Tu sede asignada";
+            }
+            
             _error = null;
         }
         catch (Exception ex)

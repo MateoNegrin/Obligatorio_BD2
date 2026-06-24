@@ -79,4 +79,30 @@ public sealed class TransferenciaRepository : ITransferenciaRepository
             throw;
         }
     }
+
+    public async Task<IReadOnlyList<Transferencia>> GetByUsuarioAsync(string numeroDocumento, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(
+            @"SELECT numero_documento_emisor, numero_documento_receptor, id_entrada, fecha 
+              FROM transferencia 
+              WHERE numero_documento_emisor = @numero_documento OR numero_documento_receptor = @numero_documento
+              ORDER BY fecha DESC",
+            (MySqlConnection)conn);
+        cmd.Parameters.AddWithValue("@numero_documento", numeroDocumento);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+
+        var result = new List<Transferencia>();
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(new Transferencia
+            {
+                NumeroDocumentoEmisor = reader.GetString(0),
+                NumeroDocumentoReceptor = reader.GetString(1),
+                IdEntrada = reader.GetInt32(2),
+                Fecha = reader.GetDateTime(3)
+            });
+        }
+        return result;
+    }
 }
