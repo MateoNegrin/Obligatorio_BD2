@@ -12,6 +12,8 @@ public interface IUsuarioService
     Task CreateAsync(CrearUsuarioRequest request, CancellationToken ct = default);
     Task UpdateAsync(string numeroDocumento, ActualizarUsuarioRequest request, CancellationToken ct = default);
     Task DeleteAsync(string numeroDocumento, CancellationToken ct = default);
+    Task<bool> IsIdentidadVerificadaAsync(string numeroDocumento, CancellationToken ct = default);
+    Task VerificarIdentidadAsync(string numeroDocumento, CancellationToken ct = default);
 }
 
 public sealed class UsuarioService : IUsuarioService
@@ -97,4 +99,10 @@ public sealed class UsuarioService : IUsuarioService
     {
         await _repository.DeleteAsync(numeroDocumento, ct);
     }
+
+    public Task<bool> IsIdentidadVerificadaAsync(string numeroDocumento, CancellationToken ct = default)
+        => _repository.IsIdentidadVerificadaAsync(numeroDocumento, ct);
+
+    public Task VerificarIdentidadAsync(string numeroDocumento, CancellationToken ct = default)
+        => _repository.VerificarIdentidadAsync(numeroDocumento, ct);
 }

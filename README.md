@@ -4,7 +4,7 @@ Sistema de venta de entradas para el Mundial 2026. Backend en .NET con arquitect
 con acceso a datos en **ADO.NET puro sobre MySQL** (sin ORM) y un front mínimo en
 **Blazor WebAssembly**.
 
-**Base de datos remota:** `mysql.reto-ucu.net:50006` (IC_Grupo3)
+**Base de datos:** MySQL (la cadena de conexión se configura localmente, ver sección 1).
 
 > Status: Funcionalidades completamente implementadas para **Equipos, Estadios, Eventos, Usuarios, Entradas, Ventas (compra) y Transferencias**.
 > El **flujo de compra de entradas** (con disponibilidad por sector) y la **transferencia entre usuarios** funcionan de punta a punta (front + API). Endpoints disponibles
@@ -15,18 +15,17 @@ con acceso a datos en **ADO.NET puro sobre MySQL** (sin ORM) y un front mínimo 
 ## Requisitos
 
 - [.NET SDK 10](https://dotnet.microsoft.com/download) (LTS).
-- Acceso a red remota (para conectar a `mysql.reto-ucu.net:50006`).
+- Acceso a una instancia de MySQL (local o remota).
 - **Autenticación Firebase:** Acceso al proyecto Firebase `obligatoriobd2` con credenciales configuradas.
 
-## 1. Verificar conexión a la base de datos
+## 1. Configurar la conexión a la base de datos
 
-La base de datos remota está preconfigurada en `src/Ticketing.Api/appsettings.json`:
+La cadena de conexión se define en `src/Ticketing.Api/appsettings.json`, bajo la clave
+`ConnectionStrings:MySQL`. Completá ahí los datos de tu instancia de MySQL (servidor, puerto,
+base, usuario y contraseña).
 
-```json
-"ConnectionStrings": {
-  "MySQL": "Server=mysql.reto-ucu.net;Port=50006;Database=IC_Grupo3;Uid=ic_g3_admin;Pwd=BD2026;"
-}
-```
+> Las credenciales no se versionan: usá tu propio archivo `appsettings.json` (o
+> `appsettings.Development.json` / variables de entorno) y mantenelo fuera del control de versiones.
 
 La inicialización del schema (tablas) se realiza automáticamente a través del endpoint:
 ```bash
@@ -165,7 +164,7 @@ Usuario Admin:
 ## Tecnologías
 
 - **Backend:** .NET 10 (LTS), ASP.NET Core 10
-- **Base de datos:** MySQL 8.0+ (remota en mysql.reto-ucu.net)
+- **Base de datos:** MySQL 8.0+
 - **Driver:** MySql.Data v9.0.0 (ADO.NET puro, sin ORM)
 - **Frontend:** Blazor WebAssembly
 - **API:** OpenAPI/Swagger

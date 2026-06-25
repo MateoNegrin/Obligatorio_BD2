@@ -38,6 +38,8 @@ public interface IAuthenticationService
     FirebaseAuthenticationState GetCurrentState();
     Task<UserRoleResponse?> GetUserRoleAsync();
     void SetUserRole(string role);
+    Task<bool> GetIdentidadVerificadaAsync(string numeroDocumento);
+    Task<bool> VerificarIdentidadAsync(string numeroDocumento);
 }
 
 public sealed class FirebaseAuthenticationService : IAuthenticationService
@@ -331,6 +333,33 @@ public sealed class FirebaseAuthenticationService : IAuthenticationService
     {
         _currentRole = role;
         _logger.LogInformation("Rol establecido: {Role}", role);
+    }
+
+    public async Task<bool> GetIdentidadVerificadaAsync(string numeroDocumento)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<bool>($"api/Usuarios/{numeroDocumento}/identidad");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error consultando estado de identidad para {Documento}", numeroDocumento);
+            return false;
+        }
+    }
+
+    public async Task<bool> VerificarIdentidadAsync(string numeroDocumento)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"api/Usuarios/{numeroDocumento}/identidad/verificar", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verificando identidad para {Documento}", numeroDocumento);
+            return false;
+        }
     }
 }
 

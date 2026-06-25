@@ -15,4 +15,10 @@ public interface IUsuarioRepository
 
     // Sede asignada al administrador; null si el documento no corresponde a un administrador.
     Task<string?> GetSedeAdministradorAsync(string numeroDocumento, CancellationToken ct = default);
+
+    // Identidad: true si el usuario tiene la fila con estado Verificada (id = 1).
+    Task<bool> IsIdentidadVerificadaAsync(string numeroDocumento, CancellationToken ct = default);
+
+    // Registra la fila Verificada (id = 1) para el usuario. Idempotente.
+    Task VerificarIdentidadAsync(string numeroDocumento, CancellationToken ct = default);
 }

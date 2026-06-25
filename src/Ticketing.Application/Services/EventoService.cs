@@ -83,6 +83,11 @@ public sealed class EventoService : IEventoService
         if (sectores.Any(s => s.NombreSede != sede))
             throw new InvalidOperationException("Solo puede crear eventos en estadios de su sede.");
 
+        // No puede haber dos eventos en el mismo estadio y fecha con menos de 2hs de diferencia.
+        var idEstadio = sectores[0].IdEstadio;
+        if (await _repository.ExisteEventoEnEstadioCercaDeAsync(idEstadio, request.Fecha, request.Hora, ct))
+            throw new InvalidOperationException("Ya existe un evento en ese estadio con menos de 2 horas de diferencia.");
+
         var evento = new EventoDeportivo
         {
             IdEquipoLocal = request.IdEquipoLocal,

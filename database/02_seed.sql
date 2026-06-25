@@ -130,12 +130,20 @@ INSERT INTO telefono (usuario_numero_documento, telefono) VALUES
     ('ADM002', '+54 1145001111'),
     ('ADM003', '+55 1133001111');
 
--- Estados de identidad para usuarios
+-- Estados de identidad para usuarios (1=Verificada, 2=Pendiente, 3=Rechazada)
+-- Staff (funcionarios y administradores) siempre Verificado.
+-- Usuarios generales en estados variados, reflejando que el alta arranca Pendiente.
 INSERT INTO tiene_estado_identidad (usuario_numero_documento, id_estado_identidad) VALUES
-    ('12345678', 1), ('87654321', 1), ('11223344', 1), ('44332211', 1),
-    ('55667788', 1), ('88776655', 1), ('99887766', 1), ('66778899', 1),
-    ('F0001234', 1), ('F0005678', 1), ('F0009012', 1),
-    ('ADM001', 1), ('ADM002', 1), ('ADM003', 1);
+    -- Generales
+    ('12345678', 1), ('87654321', 1),   -- ya validados
+    ('11223344', 2), ('44332211', 2),   -- pendientes
+    ('55667788', 2), ('88776655', 2),   -- pendientes
+    ('66778899', 2),                    -- pendiente
+    ('99887766', 3),                    -- rechazado
+    -- Funcionarios
+    ('F0001234', 1), ('F0005678', 1), ('F0009012', 1), ('11111111', 1),
+    -- Administradores
+    ('ADM001', 1), ('ADM002', 1), ('ADM003', 1), ('22222222', 1);
 
 -- Funcionarios
 INSERT INTO funcionario (numero_documento, numero_legajo) VALUES

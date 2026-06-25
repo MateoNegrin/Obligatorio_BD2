@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Ticketing.Api.Middleware;
 using Ticketing.Application;
 using Ticketing.Application.Firebase;
 using Ticketing.Application.Services;
@@ -51,6 +52,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Convierte errores de validación de dominio en respuestas 400 con el mensaje.
+app.UseMiddleware<ValidationExceptionMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseRouting();

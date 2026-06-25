@@ -14,8 +14,8 @@ public sealed class EstadiosController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<EstadioResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll(CancellationToken ct)
-        => Ok(await _service.GetAllAsync(ct));
+    public async Task<IActionResult> GetAll([FromQuery] string? numeroDocumentoAdministrador, CancellationToken ct)
+        => Ok(await _service.GetAllAsync(numeroDocumentoAdministrador, ct));
 
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(EstadioResponse), StatusCodes.Status200OK)]

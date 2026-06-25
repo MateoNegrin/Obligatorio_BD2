@@ -9,8 +9,13 @@ public sealed class EstadiosApiClient
 
     public EstadiosApiClient(HttpClient http) => _http = http;
 
-    public async Task<IReadOnlyList<EstadioResponse>> GetAllAsync(CancellationToken ct = default)
-        => await _http.GetFromJsonAsync<IReadOnlyList<EstadioResponse>>("api/Estadios", ct) ?? [];
+    public async Task<IReadOnlyList<EstadioResponse>> GetAllAsync(string? numeroDocumentoAdministrador = null, CancellationToken ct = default)
+    {
+        var url = string.IsNullOrWhiteSpace(numeroDocumentoAdministrador)
+            ? "api/Estadios"
+            : $"api/Estadios?numeroDocumentoAdministrador={Uri.EscapeDataString(numeroDocumentoAdministrador)}";
+        return await _http.GetFromJsonAsync<IReadOnlyList<EstadioResponse>>(url, ct) ?? [];
+    }
 
     public async Task<IReadOnlyList<SectorResponse>> GetSectoresAsync(int idEstadio, CancellationToken ct = default)
         => await _http.GetFromJsonAsync<IReadOnlyList<SectorResponse>>($"api/Estadios/{idEstadio}/sectores", ct) ?? [];

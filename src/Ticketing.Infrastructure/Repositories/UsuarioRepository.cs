@@ -142,6 +142,36 @@ public sealed class UsuarioRepository : IUsuarioRepository
         cmd.Parameters.AddWithValue("@numero_direccion", usuario.NumeroDireccion);
         cmd.Parameters.AddWithValue("@codigo_postal", usuario.CodigoPostal);
         await cmd.ExecuteNonQueryAsync(ct);
+
+        // Todo usuario nuevo arranca con identidad Pendiente (estado_identidad id = 2).
+        await using var cmdEstado = new MySqlCommand(
+            "INSERT INTO tiene_estado_identidad (usuario_numero_documento, id_estado_identidad) VALUES (@numero_documento, 2)",
+            (MySqlConnection)conn);
+        cmdEstado.Parameters.AddWithValue("@numero_documento", usuario.NumeroDocumento);
+        await cmdEstado.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task<bool> IsIdentidadVerificadaAsync(string numeroDocumento, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(
+            "SELECT 1 FROM tiene_estado_identidad WHERE usuario_numero_documento = @numero_documento AND id_estado_identidad = 1",
+            (MySqlConnection)conn);
+        cmd.Parameters.AddWithValue("@numero_documento", numeroDocumento);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is not null and not DBNull;
+    }
+
+    public async Task VerificarIdentidadAsync(string numeroDocumento, CancellationToken ct = default)
+    {
+        // Registra la fila Verificada (id = 1). INSERT IGNORE para que sea idempotente
+        // (la fila Pendiente id = 2 se conserva).
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(
+            "INSERT IGNORE INTO tiene_estado_identidad (usuario_numero_documento, id_estado_identidad) VALUES (@numero_documento, 1)",
+            (MySqlConnection)conn);
+        cmd.Parameters.AddWithValue("@numero_documento", numeroDocumento);
+        await cmd.ExecuteNonQueryAsync(ct);
     }
 
     public async Task DeleteAsync(string numeroDocumento, CancellationToken ct = default)

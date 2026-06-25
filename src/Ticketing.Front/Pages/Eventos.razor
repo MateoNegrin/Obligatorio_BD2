@@ -184,7 +184,8 @@ else
             try
             {
                 _equipos = await EquiposClient.GetAllAsync();
-                _estadios = await EstadiosClient.GetAllAsync();
+                // Solo los estadios de la sede del administrador logueado.
+                _estadios = await EstadiosClient.GetAllAsync(_miDocumento);
             }
             catch (Exception ex)
             {
