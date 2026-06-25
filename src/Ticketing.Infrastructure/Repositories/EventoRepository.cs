@@ -223,6 +223,27 @@ public sealed class EventoRepository : IEventoRepository
         return result;
     }
 
+    public async Task<bool> ExisteEventoEnEstadioCercaDeAsync(int idEstadio, DateOnly fecha, TimeOnly hora, CancellationToken ct = default)
+    {
+        await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(
+            @"SELECT EXISTS (
+                  SELECT 1
+                  FROM evento_deportivo e
+                  JOIN informacion_entrada ie ON ie.id_evento_deportivo = e.id
+                  JOIN sector s ON s.id = ie.id_sector
+                  WHERE s.id_estadio = @id_estadio
+                    AND e.fecha = @fecha
+                    AND ABS(TIME_TO_SEC(e.hora) - TIME_TO_SEC(@hora)) < 7200
+              )",
+            (MySqlConnection)conn);
+        cmd.Parameters.AddWithValue("@id_estadio", idEstadio);
+        cmd.Parameters.AddWithValue("@fecha", fecha.ToDateTime(TimeOnly.MinValue));
+        cmd.Parameters.AddWithValue("@hora", hora.ToTimeSpan());
+
+        return Convert.ToInt32(await cmd.ExecuteScalarAsync(ct)) == 1;
+    }
+
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         await using var conn = await _connectionFactory.CreateOpenConnectionAsync(ct);

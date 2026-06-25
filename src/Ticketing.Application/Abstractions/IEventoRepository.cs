@@ -16,6 +16,9 @@ public interface IEventoRepository
     // Devuelve los sectores indicados con la sede de su estadio (para validación al crear eventos).
     Task<IReadOnlyList<SectorConSede>> GetSectoresConSedeAsync(IReadOnlyList<int> idSectores, CancellationToken ct = default);
 
+    // Indica si ya existe un evento en el estadio indicado, en la misma fecha, a menos de 2hs del horario dado.
+    Task<bool> ExisteEventoEnEstadioCercaDeAsync(int idEstadio, DateOnly fecha, TimeOnly hora, CancellationToken ct = default);
+
     Task<IReadOnlyList<InformacionEntrada>> GetSectoresHabilitadosAsync(int idEvento, CancellationToken ct = default);
     Task<IReadOnlyList<SectorDisponibilidad>> GetSectoresDisponiblesAsync(int idEvento, CancellationToken ct = default);
     Task HabilitarSectorAsync(InformacionEntrada info, CancellationToken ct = default);

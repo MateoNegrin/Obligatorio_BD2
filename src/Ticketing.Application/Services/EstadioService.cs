@@ -6,7 +6,8 @@ namespace Ticketing.Application.Services;
 
 public interface IEstadioService
 {
-    Task<IReadOnlyList<EstadioResponse>> GetAllAsync(CancellationToken ct = default);
+    // Si se indica un documento de administrador, devuelve solo los estadios de su sede.
+    Task<IReadOnlyList<EstadioResponse>> GetAllAsync(string? numeroDocumentoAdministrador = null, CancellationToken ct = default);
     Task<EstadioResponse?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<int> CreateAsync(CrearEstadioRequest request, CancellationToken ct = default);
     Task UpdateAsync(int id, ActualizarEstadioRequest request, CancellationToken ct = default);
@@ -27,9 +28,18 @@ public sealed class EstadioService : IEstadioService
         _usuarios = usuarios;
     }
 
-    public async Task<IReadOnlyList<EstadioResponse>> GetAllAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<EstadioResponse>> GetAllAsync(string? numeroDocumentoAdministrador = null, CancellationToken ct = default)
     {
         var estadios = await _repository.GetAllAsync(ct);
+
+        // Si se pide en nombre de un administrador, solo se muestran los estadios de su sede.
+        if (!string.IsNullOrWhiteSpace(numeroDocumentoAdministrador))
+        {
+            var sede = await _usuarios.GetSedeAdministradorAsync(numeroDocumentoAdministrador, ct)
+                ?? throw new InvalidOperationException("El usuario indicado no es un administrador válido.");
+            estadios = estadios.Where(e => e.NombreSede == sede).ToList();
+        }
+
         return estadios.Select(e => new EstadioResponse(e.Id, e.NombreSede, e.CapacidadMaxima, e.Ubicacion)).ToList();
     }
 
